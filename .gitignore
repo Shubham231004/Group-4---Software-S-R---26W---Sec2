@@ -1,0 +1,17 @@
+/build/
+/.vs/
+/.vscode/
+*.csv
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.user
+*.sln
+*.vcxproj*
+CMakeSettings.json
+CMakeUserPresets.json
+out/
+x64/
+Debug/
+Release/
