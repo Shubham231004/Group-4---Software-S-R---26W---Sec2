@@ -1,18 +1,14 @@
 /*
-CSCN74000-26W-Sec2-Software Safety &v reliability
-Project   : Aircraft-Ground Control Communication System
+CSCN74000-26W-Sec2-Software Safety & reliability
+Project: Aircraft-Ground Control Communication System
 Group 4: Shubham, Brian, Yinus
 
-Purpose   : Shared implementation for packet handling, logging, validation,
-            serialization, and telemetry conversion.
+This file has the Shared implementation for packet handling, logging, validation, serialization, and telemetry conversion.
 
 Critical Sections:
-1. Packet serialization/deserialization:
-   Any mistake here can corrupt communication.
-2. Socket send/receive loops:
-   Partial sends/receives must be handled safely.
-3. Validation logic:
-   Packet timestamp, payload size, and aircraft ID are checked defensively.
+1. Packet serialization/deserialization: Any mistake here can corrupt communication.
+2. Socket send/receive loops: Partial sends/receives must be handled safely.
+3. Validation logic: Packet timestamp, payload size, and aircraft ID are checked defensively.
 */
 
 #include "common.hpp"
