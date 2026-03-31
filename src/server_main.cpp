@@ -1,15 +1,10 @@
 /*
-Purpose   : Ground Control Server for Sprint 1.
-            Handles listening, client verification, telemetry reception,
-            acknowledgement, logging, and safe disconnect.
+This file serves as the Ground Control Server for Sprint 1. Handles listening, client verification, telemetry reception, acknowledgement, logging, and safe disconnect.
 
 Critical Sections:
-1. Verification stage:
-   The server must reject invalid first packets.
-2. Active telemetry stage:
-   Every telemetry packet is validated before processing.
-3. Error handling:
-   On any invalid input, the server moves to a controlled error path.
+1. Verification stage: The server must reject invalid first packets.
+2. Active telemetry stage: Every telemetry packet is validated before processing.
+3. Error handling: On any invalid input, the server moves to a controlled error path.
 */
 
 #include "common.hpp"

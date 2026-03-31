@@ -2,13 +2,11 @@
 #define AIRCRAFT_GROUND_CONTROL_COMMON_HPP
 
 /*
-Purpose: Shared definitions, packet structures, validation, logging, and
-         network utility declarations.
+This file manages Shared definitions, packet structures, validation, logging, and network utility declarations.
 
 Safety Notes:
-- Written in a MISRA-conscious C++ style.
-- This module avoids unsafe casts where possible, bounds payload sizes,
-  validates timestamps, and uses fixed-width integer types.
+- Written in a MISRA:2023-conscious C++ style.
+- This module avoids unsafe casts where possible, bounds payload sizes, validates timestamps, and uses fixed-width integer types.
 */
 
 #include <array>
@@ -128,6 +126,6 @@ namespace agc
                            const std::string& aircraftId,
                            const std::string& errorText);
 
-} /* namespace agc */
+} 
 
-#endif /* AIRCRAFT_GROUND_CONTROL_COMMON_HPP */
+#endif
