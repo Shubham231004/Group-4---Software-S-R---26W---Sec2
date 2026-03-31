@@ -1,19 +1,10 @@
 /*
-===============================================================================
-File      : client_main.cpp
-Purpose   : Aircraft Client for Sprint 1.
-            Establishes TCP connection, sends connect request, transmits
-            telemetry periodically, validates server responses, logs activity,
-            and disconnects gracefully.
+This file serves as the Aircraft Client for Sprint 1. Establishes TCP connection, sends connect request, transmits telemetry periodically, validates server responses, logs activity, and disconnects gracefully.
 
 Critical Sections:
-1. Initial handshake:
-   The client must wait for verification before sending telemetry.
-2. Telemetry send/ack cycle:
-   Each sent packet must be confirmed before the next step.
-3. Connection loss handling:
-   Any send/receive failure is treated as a controlled communication failure.
-===============================================================================
+1. Initial handshake: The client must wait for verification before sending telemetry.
+2. Telemetry send/ack cycle: Each sent packet must be confirmed before the next step.
+3. Connection loss handling: Any send/receive failure is treated as a controlled communication failure.
 */
 
 #include "common.hpp"
