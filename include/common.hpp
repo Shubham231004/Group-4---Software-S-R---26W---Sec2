@@ -1,12 +1,23 @@
+// Updated for sprint 2
+
 #ifndef AIRCRAFT_GROUND_CONTROL_COMMON_HPP
 #define AIRCRAFT_GROUND_CONTROL_COMMON_HPP
 
 /*
-This file manages Shared definitions, packet structures, validation, logging, and network utility declarations.
+Project   : Aircraft-Ground Control Communication System
+Sprint    : Sprint 2
+Course    : Software Safety and Reliability
 
-Safety Notes:
-- Written in a MISRA:2023-conscious C++ style.
-- This module avoids unsafe casts where possible, bounds payload sizes, validates timestamps, and uses fixed-width integer types.
+Purpose:
+Shared protocol, data structures, validation, logging, timeout helpers,
+serialization helpers, and transfer utilities used by both server and client.
+
+Safety / Reliability Notes:
+- Fixed-width integer types are used for predictable packet layout.
+- Payload sizes are bounded.
+- Timestamps, IDs, and message flows are validated.
+- Timeouts are applied to reduce indefinite blocking.
+- Full MISRA compliance will still be confirmed using PVS Studio static analysis.
 */
 
 #include <array>
@@ -23,30 +34,49 @@ Safety Notes:
 namespace agc
 {
     constexpr std::uint16_t SERVER_PORT = 5050U;
-    constexpr std::uint32_t MAGIC_NUMBER = 0x41474331UL;
-    constexpr std::uint16_t PROTOCOL_VERSION = 1U;
-    constexpr std::uint32_t MAX_PAYLOAD_SIZE = 128U;
+    constexpr std::uint32_t MAGIC_NUMBER = 0x41474331UL; /* "AGC1" */
+    constexpr std::uint16_t PROTOCOL_VERSION = 2U;
+
+    constexpr std::uint32_t MAX_PAYLOAD_SIZE = 8192U;
     constexpr std::uint64_t MAX_TIMESTAMP_DRIFT_MS = 30000ULL;
     constexpr std::size_t AIRCRAFT_ID_LENGTH = 16U;
 
+    constexpr std::uint32_t SOCKET_TIMEOUT_MS = 5000U;
+    constexpr std::uint32_t OPTIONAL_WAIT_MS = 750U;
+    constexpr std::uint32_t MAX_RECONNECT_ATTEMPTS = 3U;
+    constexpr std::uint32_t MAX_RETRANSMISSION_ATTEMPTS = 3U;
+
+    constexpr std::size_t LARGE_FILE_SIZE_BYTES = 1049600U; // > 1 MB //
+    constexpr std::size_t LARGE_FILE_CHUNK_SIZE = 4096U;
+
     enum class MessageType : std::uint32_t
     {
-        CONNECT_REQUEST = 1U,
-        CONNECT_ACK     = 2U,
-        TELEMETRY       = 3U,
-        TELEMETRY_ACK   = 4U,
-        ERROR_MESSAGE   = 5U,
-        DISCONNECT      = 6U
+        CONNECT_REQUEST   = 1U,
+        CONNECT_ACK       = 2U,
+        TELEMETRY         = 3U,
+        TELEMETRY_ACK     = 4U,
+        ERROR_MESSAGE     = 5U,
+        DISCONNECT        = 6U,
+        COMMAND           = 7U,
+        COMMAND_ACK       = 8U,
+        DATA_REQUEST      = 9U,
+        STATUS_RESPONSE   = 10U,
+        LARGE_DATA_START  = 11U,
+        LARGE_DATA_CHUNK  = 12U,
+        LARGE_DATA_END    = 13U
     };
 
     enum class ServerState : std::uint32_t
     {
-        STARTUP        = 0U,
-        IDLE_LISTENING = 1U,
-        VERIFICATION   = 2U,
-        ACTIVE         = 3U,
-        ERROR_STATE    = 4U,
-        SHUTDOWN       = 5U
+        STARTUP                = 0U,
+        IDLE_LISTENING         = 1U,
+        VERIFICATION           = 2U,
+        ACTIVE                 = 3U,
+        COMMAND_PROCESSING     = 4U,
+        DATA_TRANSFER          = 5U,
+        DISCONNECTING          = 6U,
+        ERROR_STATE            = 7U,
+        SHUTDOWN               = 8U
     };
 
     struct PacketHeader
@@ -90,6 +120,7 @@ namespace agc
                        const std::string& note);
 
         void logText(const std::string& note);
+        void logError(const std::string& errorCode, const std::string& note);
 
     private:
         std::ofstream m_file;
@@ -98,6 +129,9 @@ namespace agc
     bool initializeSockets();
     void cleanupSockets();
     void closeSocket(SOCKET socketHandle);
+
+    bool setSocketTimeouts(SOCKET socketHandle, std::uint32_t timeoutMs);
+    bool waitForReadable(SOCKET socketHandle, std::uint32_t timeoutMs);
 
     std::uint64_t getCurrentTimeMs();
 
@@ -112,6 +146,10 @@ namespace agc
                       const std::string& aircraftId,
                       const std::vector<std::uint8_t>& payloadData);
 
+    Packet makeErrorPacket(std::uint32_t sequenceNumber,
+                           const std::string& aircraftId,
+                           const std::string& errorText);
+
     std::string messageTypeToString(MessageType type);
     std::string safeAircraftIdToString(const std::array<char, AIRCRAFT_ID_LENGTH>& aircraftId);
 
@@ -122,10 +160,12 @@ namespace agc
     std::vector<std::uint8_t> telemetryToPayload(const TelemetryData& telemetry);
     bool payloadToTelemetry(const std::vector<std::uint8_t>& payload, TelemetryData& telemetry);
 
-    Packet makeErrorPacket(std::uint32_t sequenceNumber,
-                           const std::string& aircraftId,
-                           const std::string& errorText);
+    std::vector<std::uint8_t> stringToPayload(const std::string& text);
+    std::string payloadToString(const std::vector<std::uint8_t>& payload);
 
-} 
+    std::uint32_t computeChecksum(const std::vector<std::uint8_t>& data);
+    std::vector<std::uint8_t> generateDiagnosticBlob(std::size_t totalSize);
+
+}
 
 #endif

@@ -55,10 +55,8 @@ namespace agc
             networkHeader.timestampMs = hostToNetwork64(networkHeader.timestampMs);
             networkHeader.payloadSize = htonl(networkHeader.payloadSize);
 
-            const std::size_t headerSize = sizeof(PacketHeader);
-            output.resize(headerSize);
-            std::memcpy(output.data(), &networkHeader, headerSize);
-
+            output.resize(sizeof(PacketHeader));
+            std::memcpy(output.data(), &networkHeader, sizeof(PacketHeader));
             return true;
         }
 
@@ -115,16 +113,15 @@ namespace agc
     {
         if (m_file.is_open())
         {
-            m_file
-                << getCurrentTimeMs() << ","
-                << direction << ","
-                << messageTypeToString(static_cast<MessageType>(packet.header.messageType)) << ","
-                << packet.header.sequenceNumber << ","
-                << safeAircraftIdToString(packet.header.aircraftId) << ","
-                << source << ","
-                << destination << ","
-                << packet.header.payloadSize << ","
-                << note << "\n";
+            m_file << getCurrentTimeMs() << ","
+                   << direction << ","
+                   << messageTypeToString(static_cast<MessageType>(packet.header.messageType)) << ","
+                   << packet.header.sequenceNumber << ","
+                   << safeAircraftIdToString(packet.header.aircraftId) << ","
+                   << source << ","
+                   << destination << ","
+                   << packet.header.payloadSize << ","
+                   << note << "\n";
         }
     }
 
@@ -133,6 +130,15 @@ namespace agc
         if (m_file.is_open())
         {
             m_file << getCurrentTimeMs() << ",TEXT,N/A,N/A,N/A,N/A,N/A,N/A," << note << "\n";
+        }
+    }
+
+    void Logger::logError(const std::string& errorCode, const std::string& note)
+    {
+        if (m_file.is_open())
+        {
+            m_file << getCurrentTimeMs() << ",ERROR," << errorCode
+                   << ",N/A,N/A,N/A,N/A,N/A," << note << "\n";
         }
     }
 
@@ -153,6 +159,39 @@ namespace agc
         {
             (void)closesocket(socketHandle);
         }
+    }
+
+    bool setSocketTimeouts(SOCKET socketHandle, std::uint32_t timeoutMs)
+    {
+        const int timeoutValue = static_cast<int>(timeoutMs);
+
+        const int recvResult = setsockopt(socketHandle,
+                                          SOL_SOCKET,
+                                          SO_RCVTIMEO,
+                                          reinterpret_cast<const char*>(&timeoutValue),
+                                          static_cast<int>(sizeof(timeoutValue)));
+
+        const int sendResult = setsockopt(socketHandle,
+                                          SOL_SOCKET,
+                                          SO_SNDTIMEO,
+                                          reinterpret_cast<const char*>(&timeoutValue),
+                                          static_cast<int>(sizeof(timeoutValue)));
+
+        return ((recvResult == 0) && (sendResult == 0));
+    }
+
+    bool waitForReadable(SOCKET socketHandle, std::uint32_t timeoutMs)
+    {
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(socketHandle, &readSet);
+
+        timeval timeout{};
+        timeout.tv_sec = static_cast<long>(timeoutMs / 1000U);
+        timeout.tv_usec = static_cast<long>((timeoutMs % 1000U) * 1000U);
+
+        const int result = select(0, &readSet, nullptr, nullptr, &timeout);
+        return (result > 0);
     }
 
     std::uint64_t getCurrentTimeMs()
@@ -235,6 +274,16 @@ namespace agc
 
         packet.payload = payloadData;
         return packet;
+    }
+
+    Packet makeErrorPacket(std::uint32_t sequenceNumber,
+                           const std::string& aircraftId,
+                           const std::string& errorText)
+    {
+        return makePacket(MessageType::ERROR_MESSAGE,
+                          sequenceNumber,
+                          aircraftId,
+                          stringToPayload(errorText));
     }
 
     bool sendPacket(SOCKET socketHandle, const Packet& packet)
@@ -320,6 +369,20 @@ namespace agc
                 return "ERROR_MESSAGE";
             case MessageType::DISCONNECT:
                 return "DISCONNECT";
+            case MessageType::COMMAND:
+                return "COMMAND";
+            case MessageType::COMMAND_ACK:
+                return "COMMAND_ACK";
+            case MessageType::DATA_REQUEST:
+                return "DATA_REQUEST";
+            case MessageType::STATUS_RESPONSE:
+                return "STATUS_RESPONSE";
+            case MessageType::LARGE_DATA_START:
+                return "LARGE_DATA_START";
+            case MessageType::LARGE_DATA_CHUNK:
+                return "LARGE_DATA_CHUNK";
+            case MessageType::LARGE_DATA_END:
+                return "LARGE_DATA_END";
             default:
                 return "UNKNOWN";
         }
@@ -404,12 +467,38 @@ namespace agc
         return false;
     }
 
-    Packet makeErrorPacket(std::uint32_t sequenceNumber,
-                           const std::string& aircraftId,
-                           const std::string& errorText)
+    std::vector<std::uint8_t> stringToPayload(const std::string& text)
     {
-        const std::vector<std::uint8_t> payload(errorText.begin(), errorText.end());
-        return makePacket(MessageType::ERROR_MESSAGE, sequenceNumber, aircraftId, payload);
+        return std::vector<std::uint8_t>(text.begin(), text.end());
+    }
+
+    std::string payloadToString(const std::vector<std::uint8_t>& payload)
+    {
+        return std::string(payload.begin(), payload.end());
+    }
+
+    std::uint32_t computeChecksum(const std::vector<std::uint8_t>& data)
+    {
+        std::uint32_t checksum = 0U;
+
+        for (std::size_t i = 0U; i < data.size(); ++i)
+        {
+            checksum += static_cast<std::uint32_t>(data[i]);
+        }
+
+        return checksum;
+    }
+
+    std::vector<std::uint8_t> generateDiagnosticBlob(std::size_t totalSize)
+    {
+        std::vector<std::uint8_t> data(totalSize, 0U);
+
+        for (std::size_t i = 0U; i < totalSize; ++i)
+        {
+            data[i] = static_cast<std::uint8_t>(i % 251U);
+        }
+
+        return data;
     }
 
 } /* namespace agc */
