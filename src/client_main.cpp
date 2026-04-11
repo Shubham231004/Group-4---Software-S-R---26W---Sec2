@@ -210,6 +210,7 @@
 //Updated code for Sprint 2
 
 #include "common.hpp"
+#include "client_logic.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -220,7 +221,7 @@
 
 namespace
 {
-    agc::TelemetryData generateTelemetry(std::uint32_t sampleIndex)
+    /*agc::TelemetryData generateTelemetry(std::uint32_t sampleIndex)
     {
         agc::TelemetryData telemetry{};
         telemetry.altitudeFt = 30000.0 + static_cast<double>(sampleIndex * 100U);
@@ -228,6 +229,11 @@ namespace
         telemetry.headingDeg = 90.0 + static_cast<double>(sampleIndex * 1U);
         telemetry.fuelPercent = 80.0 - static_cast<double>(sampleIndex * 1U);
         return telemetry;
+    }*/
+
+    agc::TelemetryData generateTelemetry(std::uint32_t sampleIndex)
+    {
+        return agc::client_logic::generateTelemetry(sampleIndex);
     }
 
     bool connectWithRetries(SOCKET clientSocket, const sockaddr_in& serverAddress)
@@ -418,9 +424,18 @@ namespace
             const std::size_t chunksPos = startText.find(";chunks=");
             const std::size_t checksumPos = startText.find(";checksum=");
 
-            if ((sizePos == std::string::npos) ||
+            /*if ((sizePos == std::string::npos) ||
                 (chunksPos == std::string::npos) ||
                 (checksumPos == std::string::npos))
+            {
+                logger.logError("TRANSFER_META", "Invalid transfer metadata.");
+                return false;
+            }*/
+
+            if (agc::client_logic::parseTransferMetadata(startText,
+                expectedSize,
+                expectedChunks,
+                expectedChecksum) == false)
             {
                 logger.logError("TRANSFER_META", "Invalid transfer metadata.");
                 return false;
@@ -481,11 +496,16 @@ namespace
             outputFile.close();
         }
 
-        const std::string statusText =
+        /*const std::string statusText =
             std::string("TRANSFER_OK=") +
             ((sizeOk && checksumOk) ? "TRUE" : "FALSE") +
             ";SIZE=" + std::to_string(fileBuffer.size()) +
-            ";CHECKSUM=" + std::to_string(actualChecksum);
+            ";CHECKSUM=" + std::to_string(actualChecksum);*/
+
+        const std::string statusText =
+            agc::client_logic::buildTransferStatusText((sizeOk && checksumOk),
+                fileBuffer.size(),
+                actualChecksum);
 
         const agc::Packet statusPacket =
             agc::makePacket(agc::MessageType::STATUS_RESPONSE,

@@ -339,6 +339,7 @@
 // Updated code for Sprint 2
 
 #include "common.hpp"
+#include "server_logic.hpp"
 
 #include <iostream>
 #include <string>
@@ -558,13 +559,18 @@ namespace
         return ok;
     }
 
-    bool validateActivePacket(const agc::Packet& packet)
+    /*bool validateActivePacket(const agc::Packet& packet)
     {
         const bool idValid = agc::validateAircraftId(packet.header.aircraftId);
         const bool timeValid = agc::validateTimestamp(packet.header.timestampMs, agc::getCurrentTimeMs());
         const bool sizeValid = agc::validatePayloadSize(packet.header.payloadSize);
 
         return (idValid && timeValid && sizeValid);
+    }*/
+
+    bool validateActivePacket(const agc::Packet& packet)
+    {
+        return agc::server_logic::validateActivePacket(packet);
     }
 
     /*bool waitForCommandAck(SOCKET clientSocket,
@@ -939,15 +945,24 @@ namespace
             agc::generateDiagnosticBlob(agc::LARGE_FILE_SIZE_BYTES);
 
         const std::uint32_t checksum = agc::computeChecksum(largeBlob);
-        const std::uint32_t totalChunks =
+        /*const std::uint32_t totalChunks =
             static_cast<std::uint32_t>(
                 (largeBlob.size() + agc::LARGE_FILE_CHUNK_SIZE - 1U) /
+                agc::LARGE_FILE_CHUNK_SIZE);*/
+        const std::uint32_t totalChunks =
+            agc::server_logic::computeTotalChunks(largeBlob.size(),
                 agc::LARGE_FILE_CHUNK_SIZE);
 
-        const std::string startText =
+        /*const std::string startText =
             "filename=diagnostic_payload.bin;size=" + std::to_string(largeBlob.size()) +
             ";chunks=" + std::to_string(totalChunks) +
-            ";checksum=" + std::to_string(checksum);
+            ";checksum=" + std::to_string(checksum);*/
+
+        const std::string startText =
+            agc::server_logic::buildTransferStartText("diagnostic_payload.bin",
+                largeBlob.size(),
+                totalChunks,
+                checksum);
 
         const agc::Packet startPacket =
             agc::makePacket(agc::MessageType::LARGE_DATA_START,
@@ -1281,7 +1296,8 @@ int main()
 
                 responseSequence++;
 
-                if (telemetryCount == 2U)
+                /*if (telemetryCount == 2U)*/
+                if (agc::server_logic::shouldSendCommand(telemetryCount) == true)
                 {
                     if (sendCommandAndAwaitAck(clientSocket,
                         logger,
@@ -1295,7 +1311,8 @@ int main()
                     }
                 }
 
-                if (telemetryCount == 3U)
+                //if (telemetryCount == 3U)
+                if (agc::server_logic::shouldRequestAdditionalStatus(telemetryCount) == true)
                 {
                     if (requestAdditionalStatus(clientSocket,
                         logger,
@@ -1308,7 +1325,9 @@ int main()
                     }
                 }
 
-                if ((telemetryCount == 5U) && (transferTriggered == false))
+                //if ((telemetryCount == 5U) && (transferTriggered == false))
+                if (agc::server_logic::shouldStartLargeTransfer(telemetryCount,
+                    transferTriggered) == true)
                 {
                     if (performLargeTransfer(clientSocket,
                         logger,
