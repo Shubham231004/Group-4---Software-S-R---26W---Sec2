@@ -17,11 +17,6 @@ namespace AGCIntegrationSystemTests
 {
     namespace
     {
-        std::wstring toWide(const std::string& value)
-        {
-            return std::wstring(value.begin(), value.end());
-        }
-
         fs::path findRepoRoot()
         {
             fs::path current = fs::current_path();
@@ -129,22 +124,30 @@ namespace AGCIntegrationSystemTests
                 fs::remove(path);
             }
         }
-    }
 
-    TEST_CLASS(IntegrationSystemTests)
-    {
-    public:
-        TEST_METHOD(EndToEnd_ClientAndServerCompleteSuccessfully)
+        struct EndToEndRunResult
+        {
+            fs::path outputDirectory;
+            DWORD clientExitCode;
+            DWORD serverExitCode;
+        };
+
+        EndToEndRunResult runEndToEndScenario()
         {
             const fs::path repoRoot = findRepoRoot();
             const fs::path serverExe = findBuiltExecutable(repoRoot, L"server.exe");
             const fs::path clientExe = findBuiltExecutable(repoRoot, L"client.exe");
 
-            deleteIfExists(repoRoot / "server_log.csv");
-            deleteIfExists(repoRoot / "client_log.csv");
-            deleteIfExists(repoRoot / "received_diagnostic_payload.bin");
+            const fs::path outputDirectory = serverExe.parent_path();
+
+            // Clean previous artifacts from the actual runtime working directory.
+            deleteIfExists(outputDirectory / "server_log.csv");
+            deleteIfExists(outputDirectory / "client_log.csv");
+            deleteIfExists(outputDirectory / "received_diagnostic_payload.bin");
 
             PROCESS_INFORMATION serverProcess = startProcess(serverExe);
+
+            // Give the server time to start listening before launching the client.
             std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
             PROCESS_INFORMATION clientProcess = startProcess(clientExe);
@@ -152,15 +155,34 @@ namespace AGCIntegrationSystemTests
             const DWORD clientExit = waitForProcess(clientProcess, 60000U);
             const DWORD serverExit = waitForProcess(serverProcess, 60000U);
 
-            Assert::AreEqual(static_cast<DWORD>(0U), clientExit);
-            Assert::AreEqual(static_cast<DWORD>(0U), serverExit);
+            EndToEndRunResult result{};
+            result.outputDirectory = outputDirectory;
+            result.clientExitCode = clientExit;
+            result.serverExitCode = serverExit;
+            return result;
+        }
+    }
+
+    TEST_CLASS(IntegrationSystemTests)
+    {
+    public:
+        TEST_METHOD(EndToEnd_ClientAndServerCompleteSuccessfully)
+        {
+            const EndToEndRunResult result = runEndToEndScenario();
+
+            Assert::AreEqual(static_cast<DWORD>(0U), result.clientExitCode);
+            Assert::AreEqual(static_cast<DWORD>(0U), result.serverExitCode);
         }
 
         TEST_METHOD(Integration_LogsAreGeneratedAndContainExpectedEvents)
         {
-            const fs::path repoRoot = findRepoRoot();
-            const fs::path clientLog = repoRoot / "client_log.csv";
-            const fs::path serverLog = repoRoot / "server_log.csv";
+            const EndToEndRunResult result = runEndToEndScenario();
+
+            Assert::AreEqual(static_cast<DWORD>(0U), result.clientExitCode);
+            Assert::AreEqual(static_cast<DWORD>(0U), result.serverExitCode);
+
+            const fs::path clientLog = result.outputDirectory / "client_log.csv";
+            const fs::path serverLog = result.outputDirectory / "server_log.csv";
 
             Assert::IsTrue(fs::exists(clientLog), L"client_log.csv was not generated.");
             Assert::IsTrue(fs::exists(serverLog), L"server_log.csv was not generated.");
@@ -177,13 +199,19 @@ namespace AGCIntegrationSystemTests
 
         TEST_METHOD(System_LargeTransferProducesReceivedFileAboveOneMegabyte)
         {
-            const fs::path repoRoot = findRepoRoot();
-            const fs::path receivedFile = repoRoot / "received_diagnostic_payload.bin";
+            const EndToEndRunResult result = runEndToEndScenario();
+
+            Assert::AreEqual(static_cast<DWORD>(0U), result.clientExitCode);
+            Assert::AreEqual(static_cast<DWORD>(0U), result.serverExitCode);
+
+            const fs::path receivedFile =
+                result.outputDirectory / "received_diagnostic_payload.bin";
 
             Assert::IsTrue(fs::exists(receivedFile), L"Received file was not created.");
 
             const auto fileSize = fs::file_size(receivedFile);
-            Assert::IsTrue(fileSize >= 1049600ULL, L"Received file is smaller than required.");
+            Assert::IsTrue(fileSize >= 1049600ULL,
+                L"Received file is smaller than required.");
         }
     };
 }
