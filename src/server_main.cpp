@@ -1,342 +1,51 @@
-///*
-//Purpose   : Ground Control Server for Sprint 1.
-//            Handles listening, client verification, telemetry reception,
-//            acknowledgement, logging, and safe disconnect.
-//
-//Critical Sections:
-//1. Verification stage:
-//   The server must reject invalid first packets.
-//2. Active telemetry stage:
-//   Every telemetry packet is validated before processing.
-//3. Error handling:
-//   On any invalid input, the server moves to a controlled error path.
-//*/
-//
-//#include "common.hpp"
-//
-//#include <iostream>
-//#include <string>
-//
-//namespace
-//{
-//    void printState(agc::ServerState state)
-//    {
-//        switch (state)
-//        {
-//            case agc::ServerState::STARTUP:
-//                std::cout << "[SERVER] State: STARTUP\n";
-//                break;
-//            case agc::ServerState::IDLE_LISTENING:
-//                std::cout << "[SERVER] State: IDLE_LISTENING\n";
-//                break;
-//            case agc::ServerState::VERIFICATION:
-//                std::cout << "[SERVER] State: VERIFICATION\n";
-//                break;
-//            case agc::ServerState::ACTIVE:
-//                std::cout << "[SERVER] State: ACTIVE\n";
-//                break;
-//            case agc::ServerState::ERROR_STATE:
-//                std::cout << "[SERVER] State: ERROR_STATE\n";
-//                break;
-//            case agc::ServerState::SHUTDOWN:
-//                std::cout << "[SERVER] State: SHUTDOWN\n";
-//                break;
-//            default:
-//                std::cout << "[SERVER] State: UNKNOWN\n";
-//                break;
-//        }
-//    }
-//}
-//
-//int main()
-//{
-//    int exitCode = 0;
-//    agc::ServerState state = agc::ServerState::STARTUP;
-//    printState(state);
-//
-//    agc::Logger logger("server_log.csv");
-//
-//    if (agc::initializeSockets() == false)
-//    {
-//        std::cerr << "[SERVER] ERROR: WSAStartup failed.\n";
-//        return 1;
-//    }
-//
-//    SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-//    if (listenSocket == INVALID_SOCKET)
-//    {
-//        std::cerr << "[SERVER] ERROR: listen socket creation failed.\n";
-//        agc::cleanupSockets();
-//        return 1;
-//    }
-//
-//    sockaddr_in serverAddress{};
-//    serverAddress.sin_family = AF_INET;
-//    serverAddress.sin_port = htons(agc::SERVER_PORT);
-//    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-//
-//    if (bind(listenSocket,
-//             reinterpret_cast<sockaddr*>(&serverAddress),
-//             static_cast<int>(sizeof(serverAddress))) == SOCKET_ERROR)
-//    {
-//        std::cerr << "[SERVER] ERROR: bind failed.\n";
-//        agc::closeSocket(listenSocket);
-//        agc::cleanupSockets();
-//        return 1;
-//    }
-//
-//    if (listen(listenSocket, 1) == SOCKET_ERROR)
-//    {
-//        std::cerr << "[SERVER] ERROR: listen failed.\n";
-//        agc::closeSocket(listenSocket);
-//        agc::cleanupSockets();
-//        return 1;
-//    }
-//
-//    state = agc::ServerState::IDLE_LISTENING;
-//    printState(state);
-//    logger.logText("Server started and listening on port 5050.");
-//
-//    std::cout << "[SERVER] Waiting for client connection...\n";
-//
-//    sockaddr_in clientAddress{};
-//    int clientAddressLength = static_cast<int>(sizeof(clientAddress));
-//    SOCKET clientSocket = accept(listenSocket,
-//                                 reinterpret_cast<sockaddr*>(&clientAddress),
-//                                 &clientAddressLength);
-//
-//    if (clientSocket == INVALID_SOCKET)
-//    {
-//        std::cerr << "[SERVER] ERROR: accept failed.\n";
-//        agc::closeSocket(listenSocket);
-//        agc::cleanupSockets();
-//        return 1;
-//    }
-//
-//    state = agc::ServerState::VERIFICATION;
-//    printState(state);
-//
-//    agc::Packet firstPacket{};
-//    bool sessionActive = false;
-//    std::uint32_t responseSequence = 1U;
-//
-//    if (agc::receivePacket(clientSocket, firstPacket) == false)
-//    {
-//        std::cerr << "[SERVER] ERROR: failed to receive first packet.\n";
-//        logger.logText("Failed to receive first packet.");
-//        state = agc::ServerState::ERROR_STATE;
-//    }
-//    else
-//    {
-//        logger.logPacket("RX", firstPacket, "CLIENT", "SERVER", "First packet received.");
-//
-//        const bool typeValid =
-//            (static_cast<agc::MessageType>(firstPacket.header.messageType) ==
-//             agc::MessageType::CONNECT_REQUEST);
-//
-//        const bool idValid =
-//            agc::validateAircraftId(firstPacket.header.aircraftId);
-//
-//        const bool timestampValid =
-//            agc::validateTimestamp(firstPacket.header.timestampMs, agc::getCurrentTimeMs());
-//
-//        const bool payloadSizeValid =
-//            agc::validatePayloadSize(firstPacket.header.payloadSize);
-//
-//        if ((typeValid == true) &&
-//            (idValid == true) &&
-//            (timestampValid == true) &&
-//            (payloadSizeValid == true))
-//        {
-//            const std::string aircraftId =
-//                agc::safeAircraftIdToString(firstPacket.header.aircraftId);
-//
-//            const std::string ackText = "Connection verified.";
-//            const std::vector<std::uint8_t> ackPayload(ackText.begin(), ackText.end());
-//
-//            agc::Packet ackPacket =
-//                agc::makePacket(agc::MessageType::CONNECT_ACK,
-//                                responseSequence,
-//                                aircraftId,
-//                                ackPayload);
-//
-//            if (agc::sendPacket(clientSocket, ackPacket) == true)
-//            {
-//                logger.logPacket("TX", ackPacket, "SERVER", "CLIENT", "Connection ACK sent.");
-//                std::cout << "[SERVER] Client verified successfully.\n";
-//                sessionActive = true;
-//                state = agc::ServerState::ACTIVE;
-//                printState(state);
-//                responseSequence++;
-//            }
-//            else
-//            {
-//                std::cerr << "[SERVER] ERROR: failed to send connection ACK.\n";
-//                state = agc::ServerState::ERROR_STATE;
-//            }
-//        }
-//        else
-//        {
-//            const std::string aircraftId =
-//                agc::safeAircraftIdToString(firstPacket.header.aircraftId);
-//
-//            agc::Packet errorPacket =
-//                agc::makeErrorPacket(responseSequence, aircraftId, "Verification failed.");
-//
-//            (void)agc::sendPacket(clientSocket, errorPacket);
-//            logger.logPacket("TX", errorPacket, "SERVER", "CLIENT", "Verification failed.");
-//            std::cerr << "[SERVER] ERROR: client verification failed.\n";
-//            state = agc::ServerState::ERROR_STATE;
-//        }
-//    }
-//
-//    while (sessionActive == true)
-//    {
-//        agc::Packet incomingPacket{};
-//
-//        if (agc::receivePacket(clientSocket, incomingPacket) == false)
-//        {
-//            std::cerr << "[SERVER] ERROR: receive failed or client disconnected unexpectedly.\n";
-//            logger.logText("Receive failed during active session.");
-//            state = agc::ServerState::ERROR_STATE;
-//            break;
-//        }
-//
-//        logger.logPacket("RX", incomingPacket, "CLIENT", "SERVER", "Packet received during active session.");
-//
-//        const agc::MessageType messageType =
-//            static_cast<agc::MessageType>(incomingPacket.header.messageType);
-//
-//        if (messageType == agc::MessageType::TELEMETRY)
-//        {
-//            const bool idValid =
-//                agc::validateAircraftId(incomingPacket.header.aircraftId);
-//
-//            const bool timestampValid =
-//                agc::validateTimestamp(incomingPacket.header.timestampMs, agc::getCurrentTimeMs());
-//
-//            const bool payloadSizeValid =
-//                agc::validatePayloadSize(incomingPacket.header.payloadSize);
-//
-//            agc::TelemetryData telemetry{};
-//
-//            const bool telemetryValid =
-//                agc::payloadToTelemetry(incomingPacket.payload, telemetry);
-//
-//            if ((idValid == true) &&
-//                (timestampValid == true) &&
-//                (payloadSizeValid == true) &&
-//                (telemetryValid == true))
-//            {
-//                std::cout << "\n[SERVER] Telemetry received\n";
-//                std::cout << "  Altitude (ft): " << telemetry.altitudeFt << "\n";
-//                std::cout << "  Speed (knots): " << telemetry.speedKnots << "\n";
-//                std::cout << "  Heading (deg): " << telemetry.headingDeg << "\n";
-//                std::cout << "  Fuel (%): " << telemetry.fuelPercent << "\n";
-//
-//                const std::string aircraftId =
-//                    agc::safeAircraftIdToString(incomingPacket.header.aircraftId);
-//
-//                const std::string ackText = "Telemetry accepted.";
-//                const std::vector<std::uint8_t> ackPayload(ackText.begin(), ackText.end());
-//
-//                agc::Packet ackPacket =
-//                    agc::makePacket(agc::MessageType::TELEMETRY_ACK,
-//                                    responseSequence,
-//                                    aircraftId,
-//                                    ackPayload);
-//
-//                if (agc::sendPacket(clientSocket, ackPacket) == true)
-//                {
-//                    logger.logPacket("TX", ackPacket, "SERVER", "CLIENT", "Telemetry ACK sent.");
-//                    responseSequence++;
-//                }
-//                else
-//                {
-//                    std::cerr << "[SERVER] ERROR: failed to send telemetry ACK.\n";
-//                    logger.logText("Failed to send telemetry ACK.");
-//                    state = agc::ServerState::ERROR_STATE;
-//                    break;
-//                }
-//            }
-//            else
-//            {
-//                const std::string aircraftId =
-//                    agc::safeAircraftIdToString(incomingPacket.header.aircraftId);
-//
-//                agc::Packet errorPacket =
-//                    agc::makeErrorPacket(responseSequence, aircraftId, "Invalid telemetry packet.");
-//
-//                (void)agc::sendPacket(clientSocket, errorPacket);
-//                logger.logPacket("TX", errorPacket, "SERVER", "CLIENT", "Invalid telemetry packet.");
-//                state = agc::ServerState::ERROR_STATE;
-//                break;
-//            }
-//        }
-//        else if (messageType == agc::MessageType::DISCONNECT)
-//        {
-//            std::cout << "[SERVER] Disconnect request received.\n";
-//            logger.logText("Disconnect request received.");
-//
-//            const std::string aircraftId =
-//                agc::safeAircraftIdToString(incomingPacket.header.aircraftId);
-//
-//            const std::string ackText = "Session closed.";
-//            const std::vector<std::uint8_t> ackPayload(ackText.begin(), ackText.end());
-//
-//            agc::Packet disconnectAck =
-//                agc::makePacket(agc::MessageType::DISCONNECT,
-//                                responseSequence,
-//                                aircraftId,
-//                                ackPayload);
-//
-//            (void)agc::sendPacket(clientSocket, disconnectAck);
-//            logger.logPacket("TX", disconnectAck, "SERVER", "CLIENT", "Disconnect ACK sent.");
-//            sessionActive = false;
-//            state = agc::ServerState::IDLE_LISTENING;
-//            printState(state);
-//        }
-//        else
-//        {
-//            const std::string aircraftId =
-//                agc::safeAircraftIdToString(incomingPacket.header.aircraftId);
-//
-//            agc::Packet errorPacket =
-//                agc::makeErrorPacket(responseSequence, aircraftId, "Unexpected message type.");
-//
-//            (void)agc::sendPacket(clientSocket, errorPacket);
-//            logger.logPacket("TX", errorPacket, "SERVER", "CLIENT", "Unexpected message type.");
-//            std::cerr << "[SERVER] ERROR: unexpected message type received.\n";
-//            state = agc::ServerState::ERROR_STATE;
-//            break;
-//        }
-//    }
-//
-//    if (state == agc::ServerState::ERROR_STATE)
-//    {
-//        printState(state);
-//        logger.logText("Server entered ERROR_STATE.");
-//    }
-//
-//    agc::closeSocket(clientSocket);
-//    agc::closeSocket(listenSocket);
-//
-//    state = agc::ServerState::SHUTDOWN;
-//    printState(state);
-//    logger.logText("Server shutdown complete.");
-//
-//    agc::cleanupSockets();
-//    return exitCode;
-//}
+/*
+Project  : Aircraft-Ground Control Communication System
+Course   : CSCN74000 - Software Safety & Reliability
+Group 4  : Shubham, Yinus, Brian
+File     : server_main.cpp
 
+Purpose:
+This file implements the ground control server application. The server:
+- starts a listening TCP socket,
+- accepts a client connection,
+- verifies the first packet before allowing active communication,
+- receives and validates telemetry,
+- sends acknowledgements,
+- sends operational commands,
+- requests additional aircraft status,
+- initiates and completes the required large-data transfer,
+- enforces state-machine behavior,
+- and performs controlled shutdown.
 
+Importance of this file:
+The server is the controlling side of the distributed system. It is responsible
+for deciding when major actions occur and for ensuring communication happens only
+in valid states.
 
+Main responsibilities in this file:
+- state-machine control,
+- connection acceptance and verification,
+- packet validation during active session,
+- command dispatch and acknowledgement handling,
+- additional status request handling,
+- large transfer initiation and completion,
+- error handling and shutdown.
 
-
-
-
-
-// Updated code for Sprint 2
+DAL-oriented commentary:
+- DAL A style relevance:
+  Verification-stage checks, state-transition protection, payload/timestamp/ID
+  validation, and defensive retransmission handling act as the strongest safety
+  barriers in this file.
+- DAL B style relevance:
+  Telemetry handling, command timing, and large-transfer initiation affect major
+  distributed operational behavior.
+- DAL C style relevance:
+  Logging, status request handling, transfer sequencing, and orderly disconnect
+  support reliability, traceability, and diagnostics.
+- DAL D/E style relevance:
+  Console display and some helper formatting are supportive rather than primary
+  control logic.
+*/
 
 #include "common.hpp"
 #include "server_logic.hpp"
@@ -347,7 +56,11 @@
 
 namespace
 {
-
+    /*
+    Forward declarations are placed here because several helpers call each other.
+    This keeps the implementation organized while still allowing a top-down read
+    of the file.
+    */
     bool sendPacketWithRetransmission(SOCKET clientSocket,
         agc::Logger& logger,
         const agc::Packet& packet,
@@ -363,6 +76,20 @@ namespace
     bool waitForCommandAck(SOCKET clientSocket,
         agc::Logger& logger);
 
+    /*
+    printState
+
+    Purpose:
+    Prints the current server state to the console for operator visibility.
+
+    Importance of this helper:
+    The project includes a server-side state machine, and visible state output
+    helps both during debugging and during demonstration.
+
+    DAL reasoning:
+    This is mainly DAL D/C-style supportive behavior. It does not control the
+    state machine, but it improves observability of state transitions.
+    */
     void printState(agc::ServerState state)
     {
         switch (state)
@@ -400,6 +127,25 @@ namespace
         }
     }
 
+    /*
+    isValidTransition
+
+    Purpose:
+    Defines which state transitions are allowed in the server state machine.
+
+    Importance of this helper:
+    A state machine is only useful if it rejects illegal transitions. This
+    function centralizes the allowed transition rules.
+
+    DAL reasoning:
+    This is one of the most important defensive controls in the file and is
+    conceptually closest to DAL A/B because it prevents uncontrolled or unsafe
+    operational mode changes.
+
+    Logic explanation:
+    For each current state, only the explicitly listed next states are allowed.
+    Any other requested transition is rejected.
+    */
     bool isValidTransition(agc::ServerState currentState, agc::ServerState nextState)
     {
         bool valid = false;
@@ -462,6 +208,19 @@ namespace
         return valid;
     }
 
+    /*
+    stateToString
+
+    Purpose:
+    Converts ServerState to a readable string for logs and error reporting.
+
+    Importance of this helper:
+    Logging transition attempts and failures is much clearer when state names are
+    written as text instead of numeric values.
+
+    DAL reasoning:
+    This is supportive DAL D/C-style behavior for traceability.
+    */
     std::string stateToString(agc::ServerState state)
     {
         switch (state)
@@ -489,15 +248,34 @@ namespace
         }
     }
 
+    /*
+    transitionState
+
+    Purpose:
+    Performs a checked server-state transition and logs the result.
+
+    Importance of this helper:
+    All state changes should pass through one controlled location. This reduces
+    the chance of silent or illegal state mutation elsewhere in the file.
+
+    DAL reasoning:
+    This is one of the most important DAL A/B-style controls in the server
+    implementation because it centrally enforces legal state-machine behavior.
+
+    Logic explanation:
+    1. Check whether the requested transition is legal.
+    2. If illegal, log an error and reject it.
+    3. If legal, log the transition, update the state, and print it.
+    */
     bool transitionState(agc::ServerState& currentState,
         agc::ServerState nextState,
         agc::Logger& logger,
         const std::string& reason)
     {
         /*
-          Critical Section:
-          All server state changes must pass through this function so that
-          invalid transitions are detected, logged, and rejected centrally.
+        Critical Section:
+        All server state changes must pass through this function so that
+        invalid transitions are detected, logged, and rejected centrally.
         */
         if (isValidTransition(currentState, nextState) == false)
         {
@@ -521,6 +299,20 @@ namespace
         return true;
     }
 
+    /*
+    sendAndLog
+
+    Purpose:
+    Sends a packet to the client and records the result in the server log.
+
+    Importance of this helper:
+    Sending plus logging happens throughout the server. Centralizing the pattern
+    improves consistency and reduces code duplication.
+
+    DAL reasoning:
+    This helper supports reliable communication and traceability, making it
+    conceptually DAL B/C.
+    */
     bool sendAndLog(SOCKET clientSocket,
         agc::Logger& logger,
         const agc::Packet& packet,
@@ -540,6 +332,19 @@ namespace
         return ok;
     }
 
+    /*
+    receiveAndLog
+
+    Purpose:
+    Receives a packet from the client and records the result in the server log.
+
+    Importance of this helper:
+    Like sendAndLog(), it centralizes a repeated communication pattern and keeps
+    receive-side traceability consistent.
+
+    DAL reasoning:
+    This helper supports operational traceability and is conceptually DAL B/C.
+    */
     bool receiveAndLog(SOCKET clientSocket,
         agc::Logger& logger,
         agc::Packet& packet,
@@ -559,39 +364,39 @@ namespace
         return ok;
     }
 
-    /*bool validateActivePacket(const agc::Packet& packet)
-    {
-        const bool idValid = agc::validateAircraftId(packet.header.aircraftId);
-        const bool timeValid = agc::validateTimestamp(packet.header.timestampMs, agc::getCurrentTimeMs());
-        const bool sizeValid = agc::validatePayloadSize(packet.header.payloadSize);
+    /*
+    validateActivePacket
 
-        return (idValid && timeValid && sizeValid);
-    }*/
+    Purpose:
+    Delegates active-session validation to the server_logic module.
 
+   Importance of this helper:
+    Keeping validation logic in a separate module makes it easier to unit test
+    and keeps server_main.cpp focused on communication flow.
+
+    DAL reasoning:
+    Active-packet validation is conceptually DAL A/B because it acts as a
+    defensive gate before processing active-session data.
+    */
     bool validateActivePacket(const agc::Packet& packet)
     {
         return agc::server_logic::validateActivePacket(packet);
     }
 
-    /*bool waitForCommandAck(SOCKET clientSocket,
-        agc::Logger& logger)
-    {
-        agc::Packet ackPacket{};
+    /*
+    waitForCommandAck
 
-        if (agc::waitForReadable(clientSocket, agc::SOCKET_TIMEOUT_MS) == false)
-        {
-            logger.logError("TIMEOUT", "Timed out waiting for command acknowledgement.");
-            return false;
-        }
+    Purpose:
+    Waits for a COMMAND_ACK packet after the server has issued a command.
 
-        if (receiveAndLog(clientSocket, logger, ackPacket, "Command acknowledgement received.") == false)
-        {
-            return false;
-        }
+    Importance of this helper:
+    Command dispatch should be confirmed by the client before the server returns
+    to ACTIVE operation.
 
-        return (static_cast<agc::MessageType>(ackPacket.header.messageType) == agc::MessageType::COMMAND_ACK);
-    }*/
-
+    DAL reasoning:
+    This is conceptually DAL B because command acknowledgement affects major
+    control-flow correctness.
+    */
     bool waitForCommandAck(SOCKET clientSocket,
         agc::Logger& logger)
     {
@@ -604,6 +409,23 @@ namespace
             "Command acknowledgement");
     }
 
+    /*
+    sendPacketWithRetransmission
+
+    Purpose:
+    Sends a packet with bounded retransmission attempts.
+
+    Importance of this helper:
+    Some server-originated packets are important enough to retry if send fails.
+
+    Logic explanation:
+    - attempt send up to MAX_RETRANSMISSION_ATTEMPTS times
+    - log success or per-attempt failure
+    - stop immediately once one attempt succeeds
+
+    DAL reasoning:
+    This is conceptually DAL A/B-style defensive communication behavior.
+    */
     bool sendPacketWithRetransmission(SOCKET clientSocket,
         agc::Logger& logger,
         const agc::Packet& packet,
@@ -624,6 +446,26 @@ namespace
         return false;
     }
 
+    /*
+    receiveExpectedMessageWithRetransmission
+
+    Purpose:
+    Waits for a specific expected message type with bounded retry behavior.
+
+    Importance of this helper:
+    The server should not immediately fail a critical exchange because of one
+    timeout, one wrong packet, or one temporary receive issue.
+
+    Logic explanation:
+    For each attempt:
+    1. Wait for the socket to become readable.
+    2. Try to receive and log a packet.
+    3. Check whether the packet type matches expectation.
+    4. Retry on timeout, receive failure, or wrong packet type.
+
+    DAL reasoning:
+    This is conceptually DAL A/B-style defensive protocol handling.
+    */
     bool receiveExpectedMessageWithRetransmission(SOCKET clientSocket,
         agc::Logger& logger,
         agc::MessageType expectedType,
@@ -632,6 +474,7 @@ namespace
     {
         for (std::uint32_t attempt = 1U; attempt <= agc::MAX_RETRANSMISSION_ATTEMPTS; ++attempt)
         {
+            // Wait with timeout so the server does not block forever.
             if (agc::waitForReadable(clientSocket, agc::SOCKET_TIMEOUT_MS) == false)
             {
                 logger.logError("RETRANSMIT_TIMEOUT",
@@ -639,6 +482,7 @@ namespace
                 continue;
             }
 
+            // Attempt to receive the expected packet.
             if (receiveAndLog(clientSocket, logger, receivedPacket,
                 retryContext + " received on attempt " + std::to_string(attempt)) == false)
             {
@@ -647,6 +491,7 @@ namespace
                 continue;
             }
 
+            // Succeed only if the message type matches the expected one.
             if (static_cast<agc::MessageType>(receivedPacket.header.messageType) == expectedType)
             {
                 return true;
@@ -659,66 +504,28 @@ namespace
         return false;
     }
 
-    /*bool sendCommandAndAwaitAck(SOCKET clientSocket,
-        agc::Logger& logger,
-        agc::ServerState& state,
-        std::uint32_t& sequenceNumber,
-        const std::string& aircraftId,
-        const std::string& commandText)
-    {
-        if (state != agc::ServerState::ACTIVE)
-        {
-            logger.logError("STATE", "Command sending attempted outside ACTIVE state.");
-            return false;
-        }
+    /*
+    sendCommandAndAwaitAck
 
-        if (transitionState(state,
-            agc::ServerState::COMMAND_PROCESSING,
-            logger,
-            "Sending command to client.") == false)
-        {
-            return false;
-        }
+    Purpose:
+    Sends a command to the client and waits for command acknowledgement.
 
-        const agc::Packet commandPacket =
-            agc::makePacket(agc::MessageType::COMMAND,
-                sequenceNumber,
-                aircraftId,
-                agc::stringToPayload(commandText));
+    Importance of this helper:
+    The server issues a command as part of the active communication sequence and
+    must confirm that the client acknowledges it before continuing.
 
-        if (sendAndLog(clientSocket, logger, commandPacket, "Command sent to client.") == false)
-        {
-            (void)transitionState(state,
-                agc::ServerState::ERROR_STATE,
-                logger,
-                "Failed to send command packet.");
-            return false;
-        }
+    Logic explanation:
+    1. Ensure the server is currently in ACTIVE.
+    2. Move into COMMAND_PROCESSING.
+    3. Build the COMMAND packet.
+    4. Try sending it with bounded retry behavior.
+    5. Wait for COMMAND_ACK after each send attempt.
+    6. On success, increment sequence and return to ACTIVE.
+    7. On failure, move to ERROR_STATE.
 
-        sequenceNumber++;
-
-        const bool ackOk = waitForCommandAck(clientSocket, logger);
-
-        if (ackOk == false)
-        {
-            (void)transitionState(state,
-                agc::ServerState::ERROR_STATE,
-                logger,
-                "Command acknowledgement failed.");
-            return false;
-        }
-
-        if (transitionState(state,
-            agc::ServerState::ACTIVE,
-            logger,
-            "Command acknowledged successfully.") == false)
-        {
-            return false;
-        }
-
-        return true;
-    }*/
-
+    DAL reasoning:
+    This is conceptually DAL B because it governs an important control exchange.
+    */
     bool sendCommandAndAwaitAck(SOCKET clientSocket,
         agc::Logger& logger,
         agc::ServerState& state,
@@ -732,6 +539,7 @@ namespace
             return false;
         }
 
+        // Move into command-processing mode while waiting for the client to acknowledge.
         state = agc::ServerState::COMMAND_PROCESSING;
         printState(state);
 
@@ -770,67 +578,35 @@ namespace
             return false;
         }
 
+        // Only advance sequence after successful command exchange.
         sequenceNumber++;
         state = agc::ServerState::ACTIVE;
         printState(state);
         return true;
     }
 
-    /*bool requestAdditionalStatus(SOCKET clientSocket,
-        agc::Logger& logger,
-        agc::ServerState& state,
-        std::uint32_t& sequenceNumber,
-        const std::string& aircraftId)
-    {
-        if (state != agc::ServerState::ACTIVE)
-        {
-            logger.logError("STATE", "Data request attempted outside ACTIVE state.");
-            return false;
-        }
+    /*
+    requestAdditionalStatus
 
-        state = agc::ServerState::COMMAND_PROCESSING;
-        printState(state);
+    Purpose:
+    Sends a DATA_REQUEST packet and waits for a STATUS_RESPONSE.
 
-        const agc::Packet requestPacket =
-            agc::makePacket(agc::MessageType::DATA_REQUEST,
-                sequenceNumber,
-                aircraftId,
-                agc::stringToPayload("REQUEST_ENGINE_STATUS"));
+    Importance of this helper:
+    The project includes a server-triggered status query after a certain point in
+    the telemetry sequence.
 
-        if (sendAndLog(clientSocket, logger, requestPacket, "Additional status request sent.") == false)
-        {
-            return false;
-        }
+    Logic explanation:
+    1. Ensure the server is currently in ACTIVE.
+    2. Move into COMMAND_PROCESSING.
+    3. Send a DATA_REQUEST packet.
+    4. Wait for STATUS_RESPONSE with bounded retry behavior.
+    5. On success, print the returned status and return to ACTIVE.
+    6. On failure, move to ERROR_STATE.
 
-        sequenceNumber++;
-
-        if (agc::waitForReadable(clientSocket, agc::SOCKET_TIMEOUT_MS) == false)
-        {
-            logger.logError("TIMEOUT", "Timed out waiting for STATUS_RESPONSE.");
-            return false;
-        }
-
-        agc::Packet responsePacket{};
-        if (receiveAndLog(clientSocket, logger, responsePacket, "Status response received.") == false)
-        {
-            return false;
-        }
-
-        const bool ok =
-            (static_cast<agc::MessageType>(responsePacket.header.messageType) == agc::MessageType::STATUS_RESPONSE);
-
-        if (ok == true)
-        {
-            std::cout << "[SERVER] Additional status from aircraft: "
-                << agc::payloadToString(responsePacket.payload) << "\n";
-        }
-
-        state = agc::ServerState::ACTIVE;
-        printState(state);
-
-        return ok;
-    }*/
-
+    DAL reasoning:
+    This is conceptually DAL B/C because it controls structured information flow
+    beyond the basic telemetry cycle.
+    */
     bool requestAdditionalStatus(SOCKET clientSocket,
         agc::Logger& logger,
         agc::ServerState& state,
@@ -843,6 +619,7 @@ namespace
             return false;
         }
 
+        // Enter command-processing mode while waiting for a structured response.
         state = agc::ServerState::COMMAND_PROCESSING;
         printState(state);
 
@@ -907,6 +684,33 @@ namespace
         return false;
     }
 
+    /*
+    performLargeTransfer
+
+    Purpose:
+    Executes the entire server-side large-data transfer sequence.
+
+    Importance of this helper:
+    The project requires the server to initiate a large (>1 MB) object transfer
+    to the client. This helper performs that feature in a controlled sequence.
+
+    Logic explanation:
+    1. Ensure the server is in ACTIVE.
+    2. Send a command instructing the client to prepare for diagnostic transfer.
+    3. Transition into DATA_TRANSFER state.
+    4. Generate the large payload and compute checksum.
+    5. Compute chunk count and build transfer metadata.
+    6. Send LARGE_DATA_START metadata packet.
+    7. Send each LARGE_DATA_CHUNK packet.
+    8. Send LARGE_DATA_END marker.
+    9. Wait for final STATUS_RESPONSE from the client.
+    10. Return to ACTIVE only if the transfer completes successfully.
+
+    DAL reasoning:
+    This is one of the most important DAL B/A-style operational blocks in the
+    server because it controls a required major system feature and includes
+    integrity-related verification flow.
+    */
     bool performLargeTransfer(SOCKET clientSocket,
         agc::Logger& logger,
         agc::ServerState& state,
@@ -941,23 +745,18 @@ namespace
             return false;
         }
 
+        // Create deterministic binary content for the required >1 MB transfer.
         const std::vector<std::uint8_t> largeBlob =
             agc::generateDiagnosticBlob(agc::LARGE_FILE_SIZE_BYTES);
 
+        // Compute checksum once so the client can verify reconstruction integrity.
         const std::uint32_t checksum = agc::computeChecksum(largeBlob);
-        /*const std::uint32_t totalChunks =
-            static_cast<std::uint32_t>(
-                (largeBlob.size() + agc::LARGE_FILE_CHUNK_SIZE - 1U) /
-                agc::LARGE_FILE_CHUNK_SIZE);*/
+
         const std::uint32_t totalChunks =
             agc::server_logic::computeTotalChunks(largeBlob.size(),
                 agc::LARGE_FILE_CHUNK_SIZE);
 
-        /*const std::string startText =
-            "filename=diagnostic_payload.bin;size=" + std::to_string(largeBlob.size()) +
-            ";chunks=" + std::to_string(totalChunks) +
-            ";checksum=" + std::to_string(checksum);*/
-
+        // Build the structured metadata string that the client will parse first.
         const std::string startText =
             agc::server_logic::buildTransferStartText("diagnostic_payload.bin",
                 largeBlob.size(),
@@ -981,6 +780,7 @@ namespace
 
         sequenceNumber++;
 
+        // Send each chunk in order using the configured chunk size.
         for (std::uint32_t chunkIndex = 0U; chunkIndex < totalChunks; ++chunkIndex)
         {
             const std::size_t startOffset =
@@ -989,6 +789,7 @@ namespace
             std::size_t endOffset = startOffset + agc::LARGE_FILE_CHUNK_SIZE;
             if (endOffset > largeBlob.size())
             {
+                // The final chunk may be smaller than the configured chunk size.
                 endOffset = largeBlob.size();
             }
 
@@ -1014,6 +815,7 @@ namespace
             sequenceNumber++;
         }
 
+        // Signal that all chunks have now been sent.
         const agc::Packet endPacket =
             agc::makePacket(agc::MessageType::LARGE_DATA_END,
                 sequenceNumber,
@@ -1031,29 +833,7 @@ namespace
 
         sequenceNumber++;
 
-        /*if (agc::waitForReadable(clientSocket, agc::SOCKET_TIMEOUT_MS) == false)
-        {
-            logger.logError("TIMEOUT", "Timed out waiting for transfer completion response.");
-            (void)transitionState(state,
-                agc::ServerState::ERROR_STATE,
-                logger,
-                "Timeout waiting for transfer completion response.");
-            return false;
-        }
-
-        agc::Packet finalStatus{};
-        if (receiveAndLog(clientSocket, logger, finalStatus, "Transfer completion response received.") == false)
-        {
-            (void)transitionState(state,
-                agc::ServerState::ERROR_STATE,
-                logger,
-                "Failed to receive transfer completion response.");
-            return false;
-        }
-
-        const bool ok =
-            (static_cast<agc::MessageType>(finalStatus.header.messageType) == agc::MessageType::STATUS_RESPONSE);*/
-
+        // Wait for the client to report whether reconstruction and checksum validation succeeded.
         agc::Packet finalStatus{};
         const bool ok =
             receiveExpectedMessageWithRetransmission(clientSocket,
@@ -1089,10 +869,15 @@ namespace
 
 int main()
 {
+    /*
+    SERVER APPLICATION ENTRY POINT
+    */
+
     int exitCode = 0;
     agc::ServerState state = agc::ServerState::STARTUP;
     printState(state);
 
+    // File-based logging is required and supports full session traceability.
     agc::Logger logger("server_log.csv");
 
     if (agc::initializeSockets() == false)
@@ -1159,6 +944,7 @@ int main()
         return 1;
     }
 
+    // Apply bounded socket timeouts to keep protocol steps controlled.
     (void)agc::setSocketTimeouts(clientSocket, agc::SOCKET_TIMEOUT_MS);
 
     if (transitionState(state,
@@ -1176,6 +962,12 @@ int main()
     bool sessionActive = false;
     std::uint32_t responseSequence = 1U;
 
+    /*
+    VERIFICATION STAGE
+
+    The very first packet must be a valid CONNECT_REQUEST from the expected
+    aircraft endpoint before the server allows ACTIVE communication.
+    */
     if (receiveAndLog(clientSocket, logger, firstPacket, "First packet received.") == false)
     {
         std::cerr << "[SERVER] ERROR: failed to receive first packet.\n";
@@ -1233,10 +1025,16 @@ int main()
     std::uint32_t telemetryCount = 0U;
     bool transferTriggered = false;
 
+    /*
+    ACTIVE SESSION LOOP
+
+    Once verification succeeds, the server stays here until disconnect or error.
+    */
     while (sessionActive == true)
     {
         agc::Packet incomingPacket{};
 
+        // Defensive state guard: sessionActive should never coexist with an illegal state.
         if ((state != agc::ServerState::ACTIVE) &&
             (state != agc::ServerState::COMMAND_PROCESSING) &&
             (state != agc::ServerState::DATA_TRANSFER) &&
@@ -1273,6 +1071,7 @@ int main()
             {
                 telemetryCount++;
 
+                // Display the received telemetry so the session is observable during execution/demo.
                 std::cout << "\n[SERVER] Telemetry received\n";
                 std::cout << "  Altitude (ft): " << telemetry.altitudeFt << "\n";
                 std::cout << "  Speed (knots): " << telemetry.speedKnots << "\n";
@@ -1296,7 +1095,7 @@ int main()
 
                 responseSequence++;
 
-                /*if (telemetryCount == 2U)*/
+                // Trigger command flow at the configured telemetry count.
                 if (agc::server_logic::shouldSendCommand(telemetryCount) == true)
                 {
                     if (sendCommandAndAwaitAck(clientSocket,
@@ -1311,7 +1110,7 @@ int main()
                     }
                 }
 
-                //if (telemetryCount == 3U)
+                // Trigger additional status request at the configured telemetry count.
                 if (agc::server_logic::shouldRequestAdditionalStatus(telemetryCount) == true)
                 {
                     if (requestAdditionalStatus(clientSocket,
@@ -1325,7 +1124,7 @@ int main()
                     }
                 }
 
-                //if ((telemetryCount == 5U) && (transferTriggered == false))
+                // Trigger large transfer once at the configured telemetry count.
                 if (agc::server_logic::shouldStartLargeTransfer(telemetryCount,
                     transferTriggered) == true)
                 {
@@ -1383,6 +1182,7 @@ int main()
         }
         else
         {
+            // Any unexpected message type is treated as a protocol violation.
             const std::string aircraftId =
                 agc::safeAircraftIdToString(incomingPacket.header.aircraftId);
 
@@ -1396,6 +1196,9 @@ int main()
         }
     }
 
+    /*
+    SHUTDOWN / ERROR HANDLING
+    */
     if (state == agc::ServerState::ERROR_STATE)
     {
         logger.logError("SERVER_STATE", "Server entered ERROR_STATE.");
