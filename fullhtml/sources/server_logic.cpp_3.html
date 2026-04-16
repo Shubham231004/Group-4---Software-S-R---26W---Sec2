@@ -1,0 +1,276 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII" />
+  <title>server_logic.cpp</title>
+  <link rel="stylesheet" href="../style.css"/>
+  <script src="../jquery-3.5.1.min.js"></script>
+</head>
+<body>
+<pre><code class = "cpp">
+<a name="ln1">#include &quot;server_logic.hpp&quot;</a>
+<a name="ln2"> </a>
+<a name="ln3">/*</a>
+<a name="ln4">Project  : Aircraft-Ground Control Communication System</a>
+<a name="ln5">Course   : CSCN74000 - Software Safety &amp; Reliability</a>
+<a name="ln6">Group 4  : Shubham, Yinus, Brian</a>
+<a name="ln7">File     : server_logic.cpp</a>
+<a name="ln8"> </a>
+<a name="ln9">Purpose:</a>
+<a name="ln10">This file implements helper logic used specifically by the ground control server.</a>
+<a name="ln11">These functions support the server's higher-level operational decisions without</a>
+<a name="ln12">directly performing low-level socket communication.</a>
+<a name="ln13"> </a>
+<a name="ln14">Main responsibilities implemented here:</a>
+<a name="ln15">- validating whether an incoming packet is safe to process in ACTIVE state,</a>
+<a name="ln16">- calculating the number of chunks needed for large-data transfer,</a>
+<a name="ln17">- building the metadata string for the start of large transfer,</a>
+<a name="ln18">- deciding when to send a command to the client,</a>
+<a name="ln19">- deciding when to request additional aircraft status,</a>
+<a name="ln20">- deciding when to initiate a large data transfer.</a>
+<a name="ln21"> </a>
+<a name="ln22">Importance of this file:</a>
+<a name="ln23">The server is the controlling side of the distributed system. Even though the</a>
+<a name="ln24">functions here are small, they influence the correctness of:</a>
+<a name="ln25">- active-session packet acceptance,</a>
+<a name="ln26">- command timing,</a>
+<a name="ln27">- status-request timing,</a>
+<a name="ln28">- and large-transfer execution.</a>
+<a name="ln29"> </a>
+<a name="ln30">If this logic is wrong, the main server application may still compile and run,</a>
+<a name="ln31">but it may behave incorrectly or at the wrong phase of operation.</a>
+<a name="ln32"> </a>
+<a name="ln33">DAL-oriented commentary:</a>
+<a name="ln34">- DAL A style relevance:</a>
+<a name="ln35">  Active-packet validation is the most safety-relevant item in this file because</a>
+<a name="ln36">  it determines whether the server should trust incoming packets in the active</a>
+<a name="ln37">  communication phase.</a>
+<a name="ln38">- DAL B style relevance:</a>
+<a name="ln39">  Command timing and large-transfer initiation affect major distributed behavior.</a>
+<a name="ln40">- DAL C style relevance:</a>
+<a name="ln41">  Chunk counting and metadata-building support correctness and reliability of the</a>
+<a name="ln42">  large-file transfer process.</a>
+<a name="ln43">- DAL D/E style relevance:</a>
+<a name="ln44">  This file mainly contains operational decision logic rather than cosmetic or</a>
+<a name="ln45">  purely supportive behavior.</a>
+<a name="ln46">*/</a>
+<a name="ln47"> </a>
+<a name="ln48">namespace agc::server_logic</a>
+<a name="ln49">{</a>
+<a name="ln50">    /*</a>
+<a name="ln51">    validateActivePacket</a>
+<a name="ln52"> </a>
+<a name="ln53">    Purpose:</a>
+<a name="ln54">    Performs combined validation on a packet that has been received while the</a>
+<a name="ln55">    server is already inside the ACTIVE operational phase.</a>
+<a name="ln56"> </a>
+<a name="ln57">    Importance of this function:</a>
+<a name="ln58">    Once the server has entered ACTIVE, it expects ongoing communication from</a>
+<a name="ln59">    the verified aircraft client. However, that does not mean every packet</a>
+<a name="ln60">    should automatically be trusted. The server still needs to validate:</a>
+<a name="ln61">    - aircraft identity,</a>
+<a name="ln62">    - packet timestamp freshness,</a>
+<a name="ln63">    - payload size bounds.</a>
+<a name="ln64"> </a>
+<a name="ln65">    DAL reasoning:</a>
+<a name="ln66">    This function is conceptually closest to DAL A/B because it acts as a</a>
+<a name="ln67">    defensive acceptance gate before active-session data is processed.</a>
+<a name="ln68"> </a>
+<a name="ln69">    Logic explanation:</a>
+<a name="ln70">    The function computes three separate validation results and only returns</a>
+<a name="ln71">    true if all three are true.</a>
+<a name="ln72">    */</a>
+<a name="ln73">    bool validateActivePacket(const Packet&amp; packet)</a>
+<a name="ln74">    {</a>
+<a name="ln75">        // Check that the packet still claims to come from the expected aircraft.</a>
+<a name="ln76">        const bool idValid = agc::validateAircraftId(packet.header.aircraftId);</a>
+<a name="ln77"> </a>
+<a name="ln78">        // Check that the packet timestamp is still within the allowed drift.</a>
+<a name="ln79">        // This helps reject stale or abnormally delayed packets.</a>
+<a name="ln80">        const bool timeValid =</a>
+<a name="ln81">            agc::validateTimestamp(packet.header.timestampMs, agc::getCurrentTimeMs());</a>
+<a name="ln82"> </a>
+<a name="ln83">        // Check that the payload size remains within the allowed protocol bound.</a>
+<a name="ln84">        const bool sizeValid = agc::validatePayloadSize(packet.header.payloadSize);</a>
+<a name="ln85"> </a>
+<a name="ln86">        // The packet is acceptable only if all validation checks succeed.</a>
+<a name="ln87">        return (idValid &amp;&amp; timeValid &amp;&amp; sizeValid);</a>
+<a name="ln88">    }</a>
+<a name="ln89"> </a>
+<a name="ln90">    /*</a>
+<a name="ln91">    computeTotalChunks</a>
+<a name="ln92"> </a>
+<a name="ln93">    Purpose:</a>
+<a name="ln94">    Computes how many chunks are required to transfer a large payload when the</a>
+<a name="ln95">    server must split it into bounded pieces.</a>
+<a name="ln96"> </a>
+<a name="ln97">    Importance of this function:</a>
+<a name="ln98">    The project requires transferring a payload larger than 1 MB, but packets</a>
+<a name="ln99">    still need to remain bounded in size. Therefore, the server must divide the</a>
+<a name="ln100">    data into multiple smaller chunks.</a>
+<a name="ln101"> </a>
+<a name="ln102">    DAL reasoning:</a>
+<a name="ln103">    This is conceptually closest to DAL C because it directly affects the</a>
+<a name="ln104">    reliability and correctness of the large-transfer feature.</a>
+<a name="ln105"> </a>
+<a name="ln106">    Logic explanation:</a>
+<a name="ln107">    - If chunkSize is zero, return zero immediately to avoid division by zero.</a>
+<a name="ln108">    - Otherwise, use a round-up division formula:</a>
+<a name="ln109">        (totalSize + chunkSize - 1) / chunkSize</a>
+<a name="ln110">      so that any partial remainder still counts as one final chunk.</a>
+<a name="ln111">    */</a>
+<a name="ln112">    std::uint32_t computeTotalChunks(std::size_t totalSize,</a>
+<a name="ln113">        std::size_t chunkSize)</a>
+<a name="ln114">    {</a>
+<a name="ln115">        // Defensive check: zero chunk size would make chunking undefined.</a>
+<a name="ln116">        if (chunkSize == 0U)</a>
+<a name="ln117">        {</a>
+<a name="ln118">            return 0U;</a>
+<a name="ln119">        }</a>
+<a name="ln120"> </a>
+<a name="ln121">        // Round up so even a partially filled final chunk is counted.</a>
+<a name="ln122">        return static_cast&lt;std::uint32_t&gt;(</a>
+<a name="ln123">            (totalSize + chunkSize - 1U) / chunkSize);</a>
+<a name="ln124">    }</a>
+<a name="ln125"> </a>
+<a name="ln126">    /*</a>
+<a name="ln127">    buildTransferStartText</a>
+<a name="ln128"> </a>
+<a name="ln129">    Purpose:</a>
+<a name="ln130">    Builds the structured metadata string that is sent in the LARGE_DATA_START</a>
+<a name="ln131">    packet before chunk transmission begins.</a>
+<a name="ln132"> </a>
+<a name="ln133">    Importance of this function:</a>
+<a name="ln134">    The client needs to know what kind of transfer is about to happen before it</a>
+<a name="ln135">    starts receiving chunks. This metadata string tells the client:</a>
+<a name="ln136">    - the file name,</a>
+<a name="ln137">    - the full byte size,</a>
+<a name="ln138">    - the number of chunks expected,</a>
+<a name="ln139">    - and the checksum it should verify against later.</a>
+<a name="ln140"> </a>
+<a name="ln141">    DAL reasoning:</a>
+<a name="ln142">    This is closest to DAL B/C because it supports a major system feature and</a>
+<a name="ln143">    must remain internally consistent for transfer reconstruction to succeed.</a>
+<a name="ln144"> </a>
+<a name="ln145">    Logic explanation:</a>
+<a name="ln146">    The function concatenates all metadata fields into one predictable string</a>
+<a name="ln147">    with semicolon-separated key/value entries.</a>
+<a name="ln148">    */</a>
+<a name="ln149">    std::string buildTransferStartText(const std::string&amp; fileName,</a>
+<a name="ln150">        std::size_t totalSize,</a>
+<a name="ln151">        std::uint32_t totalChunks,</a>
+<a name="ln152">        std::uint32_t checksum)</a>
+<a name="ln153">    {</a>
+<a name="ln154">        return &quot;filename=&quot; + fileName +</a>
+<a name="ln155">            &quot;;size=&quot; + std::to_string(totalSize) +</a>
+<a name="ln156">            &quot;;chunks=&quot; + std::to_string(totalChunks) +</a>
+<a name="ln157">            &quot;;checksum=&quot; + std::to_string(checksum);</a>
+<a name="ln158">    }</a>
+<a name="ln159"> </a>
+<a name="ln160">    /*</a>
+<a name="ln161">    shouldSendCommand</a>
+<a name="ln162"> </a>
+<a name="ln163">    Purpose:</a>
+<a name="ln164">    Decides whether the server should send a command packet at the current point</a>
+<a name="ln165">    in the telemetry sequence.</a>
+<a name="ln166"> </a>
+<a name="ln167">    Importance of this function:</a>
+<a name="ln168">    In this project, command sending is intentionally tied to a specific telemetry</a>
+<a name="ln169">    count so that the communication flow remains predictable and testable.</a>
+<a name="ln170"> </a>
+<a name="ln171">    DAL reasoning:</a>
+<a name="ln172">    This is closest to DAL B because incorrect command timing may affect major</a>
+<a name="ln173">    distributed behavior and sequencing.</a>
+<a name="ln174"> </a>
+<a name="ln175">    Logic explanation:</a>
+<a name="ln176">    The current design sends the command only when the telemetry count reaches 2.</a>
+<a name="ln177">    */</a>
+<a name="ln178">    bool shouldSendCommand(std::uint32_t telemetryCount)</a>
+<a name="ln179">    {</a>
+<a name="ln180">        return (telemetryCount == 2U);</a>
+<a name="ln181">    }</a>
+<a name="ln182"> </a>
+<a name="ln183">    /*</a>
+<a name="ln184">    shouldRequestAdditionalStatus</a>
+<a name="ln185"> </a>
+<a name="ln186">    Purpose:</a>
+<a name="ln187">    Decides whether the server should send a DATA_REQUEST packet asking the</a>
+<a name="ln188">    aircraft client for additional status details.</a>
+<a name="ln189"> </a>
+<a name="ln190">    Importance of this function:</a>
+<a name="ln191">    The server uses this interaction to request extra information beyond the</a>
+<a name="ln192">    regular telemetry flow. It should happen at a controlled and predictable</a>
+<a name="ln193">    point in the session.</a>
+<a name="ln194"> </a>
+<a name="ln195">    DAL reasoning:</a>
+<a name="ln196">    This is closest to DAL B/C because it influences structured message flow</a>
+<a name="ln197">    between server and client.</a>
+<a name="ln198"> </a>
+<a name="ln199">    Logic explanation:</a>
+<a name="ln200">    The current design requests additional status only when telemetry count</a>
+<a name="ln201">    reaches 3.</a>
+<a name="ln202">    */</a>
+<a name="ln203">    bool shouldRequestAdditionalStatus(std::uint32_t telemetryCount)</a>
+<a name="ln204">    {</a>
+<a name="ln205">        return (telemetryCount == 3U);</a>
+<a name="ln206">    }</a>
+<a name="ln207"> </a>
+<a name="ln208">    /*</a>
+<a name="ln209">    shouldStartLargeTransfer</a>
+<a name="ln210"> </a>
+<a name="ln211">    Purpose:</a>
+<a name="ln212">    Decides whether the server should start the large data transfer phase.</a>
+<a name="ln213"> </a>
+<a name="ln214">    Importance of this function:</a>
+<a name="ln215">    Large transfer is one of the key required features of the project, but it</a>
+<a name="ln216">    must:</a>
+<a name="ln217">    - begin only at the intended telemetry stage,</a>
+<a name="ln218">    - and not be triggered more than once.</a>
+<a name="ln219"> </a>
+<a name="ln220">    DAL reasoning:</a>
+<a name="ln221">    This is conceptually closest to DAL B because it controls a major operational</a>
+<a name="ln222">    feature that changes server behavior and communication flow significantly.</a>
+<a name="ln223"> </a>
+<a name="ln224">    Logic explanation:</a>
+<a name="ln225">    The current design starts large transfer only if:</a>
+<a name="ln226">    - telemetry count has reached 5, and</a>
+<a name="ln227">    - transferTriggered is still false.</a>
+<a name="ln228"> </a>
+<a name="ln229">    This prevents duplicate transfer execution in the same session.</a>
+<a name="ln230">    */</a>
+<a name="ln231">    bool shouldStartLargeTransfer(std::uint32_t telemetryCount,</a>
+<a name="ln232">        bool transferTriggered)</a>
+<a name="ln233">    {</a>
+<a name="ln234">        return ((telemetryCount == 5U) &amp;&amp; (transferTriggered == false));</a>
+<a name="ln235">    }</a>
+<a name="ln236">}</a>
+</code></pre>
+<div class="balloon" rel="112"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<link rel="stylesheet" href="highlight.css">
+<script src="highlight.pack.js"></script>
+<script src="highlightjs-line-numbers.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<script>hljs.initLineNumbersOnLoad();</script>
+<script>
+  $(document).ready(function() {
+      $('.balloon').each(function () {
+          var bl = $(this);
+          var line = bl.attr('rel');
+          var text = $('a[name="ln'+line+'"]').text();
+
+          var space_count = 0;
+          for(var i = 0; i<text.length; i++){
+              var char = text[i];
+              if((char !== ' ')&&(char !== '\t'))break;
+              if(char === '\t')space_count++;
+              space_count++;
+          }
+
+          bl.css('margin-left', space_count*8);
+          $('a[name="ln'+line+'"]').after(bl);
+      });
+
+      window.location = window.location;
+  });
+</script>
+</body>
+</html>

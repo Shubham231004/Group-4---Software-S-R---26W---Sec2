@@ -1,0 +1,615 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>PVS-Studio HTML Report</title>
+<style type="text/css">
+   TABLE {
+    width: 100%;
+   }
+   #col_group, #col_level, #col_code, #col_cwe, #col_sast {
+    text-align: center;
+    white-space: nowrap;
+    width: 0;
+   }
+   #col_file, #col_info, #col_projects {
+    white-space: nowrap;
+    text-align: left;
+    width: 0;
+   }
+   #col_info {
+    width: 120px;
+   }
+   #col_message {
+    text-align: left;
+   }
+  </style>
+<link rel="stylesheet" href="style.css" />
+<script type="text/javascript" src="script.js"></script>
+<script type="text/javascript" src="toggle-cell.js"></script>
+</head>
+<body>
+  <div class="header">
+    <img src="images/logo.png" alt=""/>
+    <h1>PVS-Studio Analysis Results</h1>
+    <br class="clear">
+  </div>
+  <table cellpadding="0" cellspacing="0" border="0" class="infotopic">
+     <tr><th id="col_info">Date:</th><td>04/14/26 23:09:08</td></tr>
+     <tr><th id="col_info">PVS-Studio Version:</th><td>7.41.103683.200</td></tr>
+     <tr><th id="col_info">Total Warnings (MISRA):</th><td>69</td></tr>
+  </table>
+  <div class="toggle-box">
+    <label>
+      Show full paths
+    <input class="path-toggle toggle-button" type="checkbox" name="toggle-path" onclick="togglePathView()" />
+    </label>
+  </div>
+  <table cellpadding="0" cellspacing="0" border="0" class="sortable" id="sorter">
+    <tr>
+      <th class="gsort">Group</th>
+      <th class="fsort">Location</th>
+      <th class="lsort">Level</th>
+      <th class="vsort">Code</th>
+      <th class="rsort">SAST</th>
+      <th>Message</th>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_logic.cpp_0.html#ln78">client_logic.cpp:78</a><a target="_blank" class="file-link display-none" href="sources/client_logic.cpp_0.html#ln78">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_logic.cpp:78</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_logic.cpp_0.html#ln181">client_logic.cpp:181</a><a target="_blank" class="file-link display-none" href="sources/client_logic.cpp_0.html#ln181">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_logic.cpp:181</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_logic.cpp_0.html#ln249">client_logic.cpp:249</a><a target="_blank" class="file-link display-none" href="sources/client_logic.cpp_0.html#ln249">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_logic.cpp:249</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2578/">V2578</td>
+      <td id="col_sast">MISRA-CPP-2008-5-2-12</td>
+      <td id="col_message">The string literal should not decay to a pointer to wchar_t. Consider inspecting the first function argument.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_logic.cpp_0.html#ln78">client_logic.cpp:78</a><a target="_blank" class="file-link display-none" href="sources/client_logic.cpp_0.html#ln78">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_logic.cpp:78</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln99">client_main.cpp:99</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln99">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:99</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln216">client_main.cpp:216</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln216">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:216</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln275">client_main.cpp:275</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln275">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:275</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln424">client_main.cpp:424</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln424">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:424</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln552">client_main.cpp:552</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln552">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:552</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln600">client_main.cpp:600</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln600">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:600</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln472">client_main.cpp:472</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln472">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:472</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2547/">V2547</td>
+      <td id="col_sast">MISRA-CPP-2008-0-1-7</td>
+      <td id="col_message">The return value of non-void function 'insert' should be used.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln497">client_main.cpp:497</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln497">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:497</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2547/">V2547</td>
+      <td id="col_sast">MISRA-CPP-2008-0-1-7</td>
+      <td id="col_message">The return value of non-void function 'write' should be used.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln792">client_main.cpp:792</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln792">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:792</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2551/">V2551</td>
+      <td id="col_sast">MISRA-CPP-2008-3-4-1</td>
+      <td id="col_message">The 'finalAck' variable should be declared in a scope that minimizes its visibility.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln628">client_main.cpp:628</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln628">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:628</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2578/">V2578</td>
+      <td id="col_sast">MISRA-CPP-2008-5-2-12</td>
+      <td id="col_message">The string literal should not decay to a pointer to char. Consider inspecting the second function argument.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln74">client_main.cpp:74</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln74">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:74</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln99">client_main.cpp:99</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln99">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:99</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln140">client_main.cpp:140</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln140">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:140</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln173">client_main.cpp:173</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln173">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:173</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln216">client_main.cpp:216</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln216">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:216</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln275">client_main.cpp:275</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln275">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:275</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln334">client_main.cpp:334</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln334">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:334</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln375">client_main.cpp:375</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln375">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:375</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln424">client_main.cpp:424</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln424">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:424</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/client_main.cpp_1.html#ln552">client_main.cpp:552</a><a target="_blank" class="file-link display-none" href="sources/client_main.cpp_1.html#ln552">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\client_main.cpp:552</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln110">common.cpp:110</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln110">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:110</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln269">common.cpp:269</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln269">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:269</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln296">common.cpp:296</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln296">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:296</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln397">common.cpp:397</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln397">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:397</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln430">common.cpp:430</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln430">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:430</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln476">common.cpp:476</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln476">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:476</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln547">common.cpp:547</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln547">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:547</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln503">common.cpp:503</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln503">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:503</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2507/">V2507</td>
+      <td id="col_sast">MISRA-CPP-2008-6-4-1</td>
+      <td id="col_message">The body of the 'if' statement should be enclosed in braces.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln478">common.cpp:478</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln478">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:478</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2520/">V2520</td>
+      <td id="col_sast">MISRA-CPP-2008-6-4-5</td>
+      <td id="col_message">Every switch-clause should be terminated by an unconditional 'break' or 'throw' statement.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln99">common.cpp:99</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln99">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:99</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2547/">V2547</td>
+      <td id="col_sast">MISRA-CPP-2008-0-1-7</td>
+      <td id="col_message">The return value of non-void function 'memcpy' should be used.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln118">common.cpp:118</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln118">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:118</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2547/">V2547</td>
+      <td id="col_sast">MISRA-CPP-2008-0-1-7</td>
+      <td id="col_message">The return value of non-void function 'memcpy' should be used.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln215">common.cpp:215</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln215">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:215</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2547/">V2547</td>
+      <td id="col_sast">MISRA-CPP-2008-0-1-7</td>
+      <td id="col_message">The return value of non-void function 'WSACleanup' should be used.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln281">common.cpp:281</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln281">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:281</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2563/">V2563</td>
+      <td id="col_sast">MISRA-CPP-2008-5-0-15</td>
+      <td id="col_message">Array indexing should be the only form of pointer arithmetic and it should be applied only to objects defined as an array type.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln308">common.cpp:308</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln308">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:308</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2563/">V2563</td>
+      <td id="col_sast">MISRA-CPP-2008-5-0-15</td>
+      <td id="col_message">Array indexing should be the only form of pointer arithmetic and it should be applied only to objects defined as an array type.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln53">common.cpp:53</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln53">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:53</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln67">common.cpp:67</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln67">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:67</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln85">common.cpp:85</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln85">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:85</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/common.cpp_2.html#ln110">common.cpp:110</a><a target="_blank" class="file-link display-none" href="sources/common.cpp_2.html#ln110">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\common.cpp:110</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_logic.cpp_3.html#ln112">server_logic.cpp:112</a><a target="_blank" class="file-link display-none" href="sources/server_logic.cpp_3.html#ln112">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_logic.cpp:112</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln224">server_main.cpp:224</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln224">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:224</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln270">server_main.cpp:270</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln270">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:270</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln429">server_main.cpp:429</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln429">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:429</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln469">server_main.cpp:469</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln469">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:469</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln529">server_main.cpp:529</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln529">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:529</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln610">server_main.cpp:610</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln610">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:610</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln714">server_main.cpp:714</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln714">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:714</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln870">server_main.cpp:870</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln870">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:870</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2506/">V2506</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-5</td>
+      <td id="col_message">A function should have a single point of exit at the end.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln226">server_main.cpp:226</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln226">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:226</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2520/">V2520</td>
+      <td id="col_sast">MISRA-CPP-2008-6-4-5</td>
+      <td id="col_message">Every switch-clause should be terminated by an unconditional 'break' or 'throw' statement.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln1033">server_main.cpp:1033</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln1033">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:1033</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2530/">V2530</td>
+      <td id="col_sast">MISRA-CPP-2008-6-6-4</td>
+      <td id="col_message">The loop should be terminated with no more than one 'break' or 'goto' statement.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln64">server_main.cpp:64</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln64">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:64</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln70">server_main.cpp:70</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln70">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:70</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln76">server_main.cpp:76</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln76">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:76</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln93">server_main.cpp:93</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln93">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:93</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln149">server_main.cpp:149</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln149">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:149</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln224">server_main.cpp:224</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln224">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:224</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln270">server_main.cpp:270</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln270">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:270</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln316">server_main.cpp:316</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln316">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:316</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln348">server_main.cpp:348</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln348">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:348</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln381">server_main.cpp:381</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln381">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:381</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln400">server_main.cpp:400</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln400">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:400</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln429">server_main.cpp:429</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln429">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:429</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln469">server_main.cpp:469</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln469">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:469</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln529">server_main.cpp:529</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln529">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:529</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln610">server_main.cpp:610</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln610">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:610</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+    <tr>
+      <td id="col_group">MISRA</td>
+      <td id="col_file"><a target="_blank" class="file-link" href="sources/server_main.cpp_4.html#ln714">server_main.cpp:714</a><a target="_blank" class="file-link display-none" href="sources/server_main.cpp_4.html#ln714">D:\Shubham 1\Conestoga\Semester 7\Software Safety &amp; Reliability\Group Project\AircraftGroundControl\src\server_main.cpp:714</a></td>
+      <td id="col_level" style="color:#FF0000"><b>High</b></td>
+      <td id="col_code"><a target="_blank" href="https://pvs-studio.com/en/docs/warnings/v2608/">V2608</td>
+      <td id="col_sast">MISRA-CPP-2008-3-3-2</td>
+      <td id="col_message">The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</td>
+    </tr>
+  </table>
+<script type="text/javascript">
+var sorter=new table.sorter("sorter");
+sorter.init("sorter",0);
+</script>
+</body>
+</html>

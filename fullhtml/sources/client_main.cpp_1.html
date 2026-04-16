@@ -1,0 +1,863 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII" />
+  <title>client_main.cpp</title>
+  <link rel="stylesheet" href="../style.css"/>
+  <script src="../jquery-3.5.1.min.js"></script>
+</head>
+<body>
+<pre><code class = "cpp">
+<a name="ln1">/*</a>
+<a name="ln2">Project  : Aircraft-Ground Control Communication System</a>
+<a name="ln3">Course   : CSCN74000 - Software Safety &amp; Reliability</a>
+<a name="ln4">Group 4  : Shubham, Yinus, Brian</a>
+<a name="ln5">File     : client_main.cpp</a>
+<a name="ln6"> </a>
+<a name="ln7">Purpose:</a>
+<a name="ln8">This file implements the aircraft-side client application. The client:</a>
+<a name="ln9">- establishes a TCP connection to the server,</a>
+<a name="ln10">- performs connection verification,</a>
+<a name="ln11">- periodically sends telemetry,</a>
+<a name="ln12">- handles optional command/data-transfer messages from the server,</a>
+<a name="ln13">- receives and reconstructs a large diagnostic file,</a>
+<a name="ln14">- returns transfer completion status,</a>
+<a name="ln15">- and disconnects cleanly.</a>
+<a name="ln16"> </a>
+<a name="ln17">Importance of this file:</a>
+<a name="ln18">The client represents the in-flight aircraft endpoint in the distributed system.</a>
+<a name="ln19">It is responsible for producing telemetry, responding to server requests, and</a>
+<a name="ln20">participating in the required large-object transfer feature.</a>
+<a name="ln21"> </a>
+<a name="ln22">Operational responsibilities in this file:</a>
+<a name="ln23">- connection setup and retry handling,</a>
+<a name="ln24">- handshake retransmission handling,</a>
+<a name="ln25">- telemetry transmission with acknowledgement/retransmission,</a>
+<a name="ln26">- command acknowledgement,</a>
+<a name="ln27">- additional status response,</a>
+<a name="ln28">- large transfer reception and validation,</a>
+<a name="ln29">- orderly disconnect sequence.</a>
+<a name="ln30"> </a>
+<a name="ln31">DAL-oriented commentary:</a>
+<a name="ln32">- DAL A style relevance:</a>
+<a name="ln33">  Connection verification, metadata validation, retransmission handling, and</a>
+<a name="ln34">  large-transfer integrity checks act as defensive barriers against invalid or</a>
+<a name="ln35">  uncontrolled communication.</a>
+<a name="ln36">- DAL B style relevance:</a>
+<a name="ln37">  Telemetry sending, server command handling, and transfer-response behavior</a>
+<a name="ln38">  affect major operational behavior between client and server.</a>
+<a name="ln39">- DAL C style relevance:</a>
+<a name="ln40">  Logging, status reporting, optional-message handling, and file reconstruction</a>
+<a name="ln41">  support reliability, traceability, and diagnostics.</a>
+<a name="ln42">- DAL D/E style relevance:</a>
+<a name="ln43">  Console messaging and some convenience helpers are lower direct criticality,</a>
+<a name="ln44">  but still important for usability and maintainability.</a>
+<a name="ln45">*/</a>
+<a name="ln46"> </a>
+<a name="ln47">#include &quot;common.hpp&quot;</a>
+<a name="ln48">#include &quot;client_logic.hpp&quot;</a>
+<a name="ln49"> </a>
+<a name="ln50">#include &lt;chrono&gt;</a>
+<a name="ln51">#include &lt;fstream&gt;</a>
+<a name="ln52">#include &lt;iostream&gt;</a>
+<a name="ln53">#include &lt;string&gt;</a>
+<a name="ln54">#include &lt;thread&gt;</a>
+<a name="ln55">#include &lt;vector&gt;</a>
+<a name="ln56"> </a>
+<a name="ln57">namespace</a>
+<a name="ln58">{</a>
+<a name="ln59">    /*</a>
+<a name="ln60">    generateTelemetry</a>
+<a name="ln61"> </a>
+<a name="ln62">    Purpose:</a>
+<a name="ln63">    Delegates telemetry generation to the client_logic module.</a>
+<a name="ln64"> </a>
+<a name="ln65">    Importance of this helper:</a>
+<a name="ln66">    client_main.cpp is responsible for communication flow, while the logic module</a>
+<a name="ln67">    is responsible for generating the data values themselves. Keeping generation</a>
+<a name="ln68">    logic separate improves modularity and testability.</a>
+<a name="ln69"> </a>
+<a name="ln70">    DAL reasoning:</a>
+<a name="ln71">    Telemetry values directly affect what the server receives and processes, so</a>
+<a name="ln72">    this path is conceptually relevant to DAL B/C.</a>
+<a name="ln73">    */</a>
+<a name="ln74">    agc::TelemetryData generateTelemetry(std::uint32_t sampleIndex)</a>
+<a name="ln75">    {</a>
+<a name="ln76">        return agc::client_logic::generateTelemetry(sampleIndex);</a>
+<a name="ln77">    }</a>
+<a name="ln78"> </a>
+<a name="ln79">    /*</a>
+<a name="ln80">    connectWithRetries</a>
+<a name="ln81"> </a>
+<a name="ln82">    Purpose:</a>
+<a name="ln83">    Attempts to connect to the server multiple times before failing.</a>
+<a name="ln84"> </a>
+<a name="ln85">    Importance of this helper:</a>
+<a name="ln86">    Transient startup timing issues are common in client/server systems. The</a>
+<a name="ln87">    server may not yet be ready at the exact moment the client starts.</a>
+<a name="ln88"> </a>
+<a name="ln89">    Logic explanation:</a>
+<a name="ln90">    - Try to connect up to MAX_RECONNECT_ATTEMPTS times.</a>
+<a name="ln91">    - Wait 1 second between attempts.</a>
+<a name="ln92">    - Return true immediately if any attempt succeeds.</a>
+<a name="ln93">    - Return false only after all attempts fail.</a>
+<a name="ln94"> </a>
+<a name="ln95">    DAL reasoning:</a>
+<a name="ln96">    This has DAL A/B-style defensive relevance because controlled retry behavior</a>
+<a name="ln97">    helps avoid immediate unsafe failure due to timing mismatch.</a>
+<a name="ln98">    */</a>
+<a name="ln99">    bool connectWithRetries(SOCKET clientSocket, const sockaddr_in&amp; serverAddress)</a>
+<a name="ln100">    {</a>
+<a name="ln101">        for (std::uint32_t attempt = 1U; attempt &lt;= agc::MAX_RECONNECT_ATTEMPTS; ++attempt)</a>
+<a name="ln102">        {</a>
+<a name="ln103">            std::cout &lt;&lt; &quot;[CLIENT] Connection attempt &quot; &lt;&lt; attempt &lt;&lt; &quot;...\n&quot;;</a>
+<a name="ln104"> </a>
+<a name="ln105">            // Try a normal TCP connect for this attempt.</a>
+<a name="ln106">            if (connect(clientSocket,</a>
+<a name="ln107">                reinterpret_cast&lt;const sockaddr*&gt;(&amp;serverAddress),</a>
+<a name="ln108">                static_cast&lt;int&gt;(sizeof(serverAddress))) != SOCKET_ERROR)</a>
+<a name="ln109">            {</a>
+<a name="ln110">                return true;</a>
+<a name="ln111">            }</a>
+<a name="ln112"> </a>
+<a name="ln113">            // Wait briefly before the next retry so the server has time to become ready.</a>
+<a name="ln114">            std::this_thread::sleep_for(std::chrono::seconds(1));</a>
+<a name="ln115">        }</a>
+<a name="ln116"> </a>
+<a name="ln117">        return false;</a>
+<a name="ln118">    }</a>
+<a name="ln119"> </a>
+<a name="ln120">    /*</a>
+<a name="ln121">    sendAndLog</a>
+<a name="ln122"> </a>
+<a name="ln123">    Purpose:</a>
+<a name="ln124">    Sends a packet and records the result in the client log.</a>
+<a name="ln125"> </a>
+<a name="ln126">    Importance of this helper:</a>
+<a name="ln127">    The same send + log pattern appears many times in the client. Centralizing it</a>
+<a name="ln128">    reduces duplication and makes behavior consistent.</a>
+<a name="ln129"> </a>
+<a name="ln130">    Logic explanation:</a>
+<a name="ln131">    - Call agc::sendPacket()</a>
+<a name="ln132">    - If successful, log a TX packet entry</a>
+<a name="ln133">    - If not successful, log an error entry</a>
+<a name="ln134">    - Return the send result to the caller</a>
+<a name="ln135"> </a>
+<a name="ln136">    DAL reasoning:</a>
+<a name="ln137">    Logging and transmission together support traceability and reliable protocol</a>
+<a name="ln138">    execution, making this helper conceptually relevant to DAL B/C.</a>
+<a name="ln139">    */</a>
+<a name="ln140">    bool sendAndLog(SOCKET socketHandle,</a>
+<a name="ln141">        agc::Logger&amp; logger,</a>
+<a name="ln142">        const agc::Packet&amp; packet,</a>
+<a name="ln143">        const std::string&amp; note)</a>
+<a name="ln144">    {</a>
+<a name="ln145">        const bool ok = agc::sendPacket(socketHandle, packet);</a>
+<a name="ln146"> </a>
+<a name="ln147">        if (ok == true)</a>
+<a name="ln148">        {</a>
+<a name="ln149">            logger.logPacket(&quot;TX&quot;, packet, &quot;CLIENT&quot;, &quot;SERVER&quot;, note);</a>
+<a name="ln150">        }</a>
+<a name="ln151">        else</a>
+<a name="ln152">        {</a>
+<a name="ln153">            logger.logError(&quot;TX_FAIL&quot;, note);</a>
+<a name="ln154">        }</a>
+<a name="ln155"> </a>
+<a name="ln156">        return ok;</a>
+<a name="ln157">    }</a>
+<a name="ln158"> </a>
+<a name="ln159">    /*</a>
+<a name="ln160">    receiveAndLog</a>
+<a name="ln161"> </a>
+<a name="ln162">    Purpose:</a>
+<a name="ln163">    Receives a packet and records the result in the client log.</a>
+<a name="ln164"> </a>
+<a name="ln165">    Importance of this helper:</a>
+<a name="ln166">    Like sendAndLog(), this centralizes a repeated communication pattern so all</a>
+<a name="ln167">    client receive operations are logged consistently.</a>
+<a name="ln168"> </a>
+<a name="ln169">    DAL reasoning:</a>
+<a name="ln170">    Packet reception and logging are operationally important for both debugging</a>
+<a name="ln171">    and communication traceability, so this helper is conceptually DAL B/C.</a>
+<a name="ln172">    */</a>
+<a name="ln173">    bool receiveAndLog(SOCKET socketHandle,</a>
+<a name="ln174">        agc::Logger&amp; logger,</a>
+<a name="ln175">        agc::Packet&amp; packet,</a>
+<a name="ln176">        const std::string&amp; note)</a>
+<a name="ln177">    {</a>
+<a name="ln178">        const bool ok = agc::receivePacket(socketHandle, packet);</a>
+<a name="ln179"> </a>
+<a name="ln180">        if (ok == true)</a>
+<a name="ln181">        {</a>
+<a name="ln182">            logger.logPacket(&quot;RX&quot;, packet, &quot;SERVER&quot;, &quot;CLIENT&quot;, note);</a>
+<a name="ln183">        }</a>
+<a name="ln184">        else</a>
+<a name="ln185">        {</a>
+<a name="ln186">            logger.logError(&quot;RX_FAIL&quot;, note);</a>
+<a name="ln187">        }</a>
+<a name="ln188"> </a>
+<a name="ln189">        return ok;</a>
+<a name="ln190">    }</a>
+<a name="ln191"> </a>
+<a name="ln192">    /*</a>
+<a name="ln193">    receiveExpectedPacketWithRetransmission</a>
+<a name="ln194"> </a>
+<a name="ln195">    Purpose:</a>
+<a name="ln196">    Waits for a specific expected packet type with bounded retransmission-style</a>
+<a name="ln197">    retry behavior.</a>
+<a name="ln198"> </a>
+<a name="ln199">    Importance of this helper:</a>
+<a name="ln200">    Important protocol exchanges such as CONNECT_ACK and TELEMETRY_ACK should not</a>
+<a name="ln201">    fail immediately because of one missed read or timing issue.</a>
+<a name="ln202"> </a>
+<a name="ln203">    Logic explanation:</a>
+<a name="ln204">    For each attempt:</a>
+<a name="ln205">    1. Wait for the socket to become readable.</a>
+<a name="ln206">    2. Try to receive and log a packet.</a>
+<a name="ln207">    3. Check whether the received message type matches the expected type.</a>
+<a name="ln208">    4. If any of these steps fail, log the error and continue retrying.</a>
+<a name="ln209">    5. If all attempts fail, return false.</a>
+<a name="ln210"> </a>
+<a name="ln211">    DAL reasoning:</a>
+<a name="ln212">    This is a strong DAL A/B-style defensive mechanism because it prevents single</a>
+<a name="ln213">    transient failures from immediately breaking safety-relevant communication</a>
+<a name="ln214">    steps.</a>
+<a name="ln215">    */</a>
+<a name="ln216">    bool receiveExpectedPacketWithRetransmission(SOCKET socketHandle,</a>
+<a name="ln217">        agc::Logger&amp; logger,</a>
+<a name="ln218">        agc::MessageType expectedType,</a>
+<a name="ln219">        agc::Packet&amp; packet,</a>
+<a name="ln220">        const std::string&amp; context)</a>
+<a name="ln221">    {</a>
+<a name="ln222">        for (std::uint32_t attempt = 1U; attempt &lt;= agc::MAX_RETRANSMISSION_ATTEMPTS; ++attempt)</a>
+<a name="ln223">        {</a>
+<a name="ln224">            // Wait for incoming data instead of blocking forever.</a>
+<a name="ln225">            if (agc::waitForReadable(socketHandle, agc::SOCKET_TIMEOUT_MS) == false)</a>
+<a name="ln226">            {</a>
+<a name="ln227">                logger.logError(&quot;RETRANSMIT_TIMEOUT&quot;,</a>
+<a name="ln228">                    context + &quot; timed out on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln229">                continue;</a>
+<a name="ln230">            }</a>
+<a name="ln231"> </a>
+<a name="ln232">            // Try to receive the incoming packet for this attempt.</a>
+<a name="ln233">            if (receiveAndLog(socketHandle, logger, packet,</a>
+<a name="ln234">                context + &quot; received on attempt &quot; + std::to_string(attempt)) == false)</a>
+<a name="ln235">            {</a>
+<a name="ln236">                logger.logError(&quot;RETRANSMIT_RX&quot;,</a>
+<a name="ln237">                    context + &quot; receive failed on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln238">                continue;</a>
+<a name="ln239">            }</a>
+<a name="ln240"> </a>
+<a name="ln241">            // Only succeed if the received packet type is exactly what was expected.</a>
+<a name="ln242">            if (static_cast&lt;agc::MessageType&gt;(packet.header.messageType) == expectedType)</a>
+<a name="ln243">            {</a>
+<a name="ln244">                return true;</a>
+<a name="ln245">            }</a>
+<a name="ln246"> </a>
+<a name="ln247">            logger.logError(&quot;RETRANSMIT_TYPE&quot;,</a>
+<a name="ln248">                context + &quot; wrong packet type on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln249">        }</a>
+<a name="ln250"> </a>
+<a name="ln251">        return false;</a>
+<a name="ln252">    }</a>
+<a name="ln253"> </a>
+<a name="ln254">    /*</a>
+<a name="ln255">    sendTelemetryWithRetransmission</a>
+<a name="ln256"> </a>
+<a name="ln257">    Purpose:</a>
+<a name="ln258">    Sends a telemetry packet and waits for TELEMETRY_ACK with retry handling.</a>
+<a name="ln259"> </a>
+<a name="ln260">    Importance of this helper:</a>
+<a name="ln261">    Telemetry is the main repeating communication path in the client. It should</a>
+<a name="ln262">    not fail permanently because of one lost acknowledgement.</a>
+<a name="ln263"> </a>
+<a name="ln264">    Logic explanation:</a>
+<a name="ln265">    For each attempt:</a>
+<a name="ln266">    - send the telemetry packet,</a>
+<a name="ln267">    - wait for a TELEMETRY_ACK,</a>
+<a name="ln268">    - if acknowledged, increment sequence number and return success,</a>
+<a name="ln269">    - otherwise log the failure and retry.</a>
+<a name="ln270"> </a>
+<a name="ln271">    DAL reasoning:</a>
+<a name="ln272">    Telemetry acknowledgement is a major part of the client/server protocol, so</a>
+<a name="ln273">    this helper is conceptually DAL A/B-style in terms of reliable communication.</a>
+<a name="ln274">    */</a>
+<a name="ln275">    bool sendTelemetryWithRetransmission(SOCKET clientSocket,</a>
+<a name="ln276">        agc::Logger&amp; logger,</a>
+<a name="ln277">        const agc::Packet&amp; telemetryPacket,</a>
+<a name="ln278">        std::uint32_t&amp; sequenceNumber)</a>
+<a name="ln279">    {</a>
+<a name="ln280">        agc::Packet ackPacket{};</a>
+<a name="ln281"> </a>
+<a name="ln282">        for (std::uint32_t attempt = 1U; attempt &lt;= agc::MAX_RETRANSMISSION_ATTEMPTS; ++attempt)</a>
+<a name="ln283">        {</a>
+<a name="ln284">            // Send the telemetry packet for this attempt.</a>
+<a name="ln285">            if (sendAndLog(clientSocket, logger, telemetryPacket,</a>
+<a name="ln286">                &quot;Telemetry sent. Attempt &quot; + std::to_string(attempt)) == false)</a>
+<a name="ln287">            {</a>
+<a name="ln288">                logger.logError(&quot;TELEMETRY_SEND&quot;,</a>
+<a name="ln289">                    &quot;Telemetry send failed on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln290">                continue;</a>
+<a name="ln291">            }</a>
+<a name="ln292"> </a>
+<a name="ln293">            // Wait for the expected acknowledgement packet.</a>
+<a name="ln294">            if (receiveExpectedPacketWithRetransmission(clientSocket,</a>
+<a name="ln295">                logger,</a>
+<a name="ln296">                agc::MessageType::TELEMETRY_ACK,</a>
+<a name="ln297">                ackPacket,</a>
+<a name="ln298">                &quot;Telemetry ACK&quot;) == true)</a>
+<a name="ln299">            {</a>
+<a name="ln300">                // Advance the sequence only after successful acknowledgement.</a>
+<a name="ln301">                sequenceNumber++;</a>
+<a name="ln302">                std::cout &lt;&lt; &quot;[CLIENT] Telemetry ACK received.\n&quot;;</a>
+<a name="ln303">                return true;</a>
+<a name="ln304">            }</a>
+<a name="ln305"> </a>
+<a name="ln306">            logger.logError(&quot;TELEMETRY_ACK&quot;,</a>
+<a name="ln307">                &quot;Telemetry ACK not received on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln308">        }</a>
+<a name="ln309"> </a>
+<a name="ln310">        return false;</a>
+<a name="ln311">    }</a>
+<a name="ln312"> </a>
+<a name="ln313">    /*</a>
+<a name="ln314">    handleCommand</a>
+<a name="ln315"> </a>
+<a name="ln316">    Purpose:</a>
+<a name="ln317">    Processes a COMMAND packet received from the server and sends a COMMAND_ACK.</a>
+<a name="ln318"> </a>
+<a name="ln319">    Importance of this helper:</a>
+<a name="ln320">    The server may issue control instructions to the client during the active</a>
+<a name="ln321">    session. The client must acknowledge those instructions in a structured way.</a>
+<a name="ln322"> </a>
+<a name="ln323">    Logic explanation:</a>
+<a name="ln324">    - Read the command text from packet payload</a>
+<a name="ln325">    - Print it for operator visibility</a>
+<a name="ln326">    - Create a COMMAND_ACK packet indicating execution</a>
+<a name="ln327">    - Send it back to the server</a>
+<a name="ln328">    - Advance the sequence number</a>
+<a name="ln329"> </a>
+<a name="ln330">    DAL reasoning:</a>
+<a name="ln331">    Command handling affects major operational behavior, so this helper is</a>
+<a name="ln332">    conceptually DAL B.</a>
+<a name="ln333">    */</a>
+<a name="ln334">    bool handleCommand(SOCKET clientSocket,</a>
+<a name="ln335">        agc::Logger&amp; logger,</a>
+<a name="ln336">        const std::string&amp; aircraftId,</a>
+<a name="ln337">        const agc::Packet&amp; packet,</a>
+<a name="ln338">        std::uint32_t&amp; sequenceNumber)</a>
+<a name="ln339">    {</a>
+<a name="ln340">        const std::string commandText = agc::payloadToString(packet.payload);</a>
+<a name="ln341">        std::cout &lt;&lt; &quot;[CLIENT] Command received: &quot; &lt;&lt; commandText &lt;&lt; &quot;\n&quot;;</a>
+<a name="ln342"> </a>
+<a name="ln343">        const agc::Packet ackPacket =</a>
+<a name="ln344">            agc::makePacket(agc::MessageType::COMMAND_ACK,</a>
+<a name="ln345">                sequenceNumber,</a>
+<a name="ln346">                aircraftId,</a>
+<a name="ln347">                agc::stringToPayload(&quot;COMMAND_EXECUTED:&quot; + commandText));</a>
+<a name="ln348"> </a>
+<a name="ln349">        const bool ok = sendAndLog(clientSocket, logger, ackPacket, &quot;Command ACK sent.&quot;);</a>
+<a name="ln350">        sequenceNumber++;</a>
+<a name="ln351">        return ok;</a>
+<a name="ln352">    }</a>
+<a name="ln353"> </a>
+<a name="ln354">    /*</a>
+<a name="ln355">    handleDataRequest</a>
+<a name="ln356"> </a>
+<a name="ln357">    Purpose:</a>
+<a name="ln358">    Processes a DATA_REQUEST packet and returns a STATUS_RESPONSE packet.</a>
+<a name="ln359"> </a>
+<a name="ln360">    Importance of this helper:</a>
+<a name="ln361">    The server may request additional status information beyond the standard</a>
+<a name="ln362">    telemetry stream. This helper generates that structured response.</a>
+<a name="ln363"> </a>
+<a name="ln364">    Logic explanation:</a>
+<a name="ln365">    - Extract request text from payload</a>
+<a name="ln366">    - Print request information</a>
+<a name="ln367">    - Build a fixed diagnostic status string</a>
+<a name="ln368">    - Place it in a STATUS_RESPONSE packet</a>
+<a name="ln369">    - Send response and advance sequence number</a>
+<a name="ln370"> </a>
+<a name="ln371">    DAL reasoning:</a>
+<a name="ln372">    Additional status exchange supports operational monitoring and is closest to</a>
+<a name="ln373">    DAL B/C in relevance.</a>
+<a name="ln374">    */</a>
+<a name="ln375">    bool handleDataRequest(SOCKET clientSocket,</a>
+<a name="ln376">        agc::Logger&amp; logger,</a>
+<a name="ln377">        const std::string&amp; aircraftId,</a>
+<a name="ln378">        const agc::Packet&amp; packet,</a>
+<a name="ln379">        std::uint32_t&amp; sequenceNumber)</a>
+<a name="ln380">    {</a>
+<a name="ln381">        const std::string requestText = agc::payloadToString(packet.payload);</a>
+<a name="ln382">        std::cout &lt;&lt; &quot;[CLIENT] Data request received: &quot; &lt;&lt; requestText &lt;&lt; &quot;\n&quot;;</a>
+<a name="ln383"> </a>
+<a name="ln384">        const std::string statusText =</a>
+<a name="ln385">            &quot;ENGINE_TEMP=91.5;OIL_PRESSURE=52.2;CABIN_PRESSURE=11.4;SYSTEM=NOMINAL&quot;;</a>
+<a name="ln386"> </a>
+<a name="ln387">        const agc::Packet responsePacket =</a>
+<a name="ln388">            agc::makePacket(agc::MessageType::STATUS_RESPONSE,</a>
+<a name="ln389">                sequenceNumber,</a>
+<a name="ln390">                aircraftId,</a>
+<a name="ln391">                agc::stringToPayload(statusText));</a>
+<a name="ln392"> </a>
+<a name="ln393">        const bool ok = sendAndLog(clientSocket, logger, responsePacket, &quot;Status response sent.&quot;);</a>
+<a name="ln394">        sequenceNumber++;</a>
+<a name="ln395">        return ok;</a>
+<a name="ln396">    }</a>
+<a name="ln397"> </a>
+<a name="ln398">    /*</a>
+<a name="ln399">    receiveLargeTransfer</a>
+<a name="ln400"> </a>
+<a name="ln401">    Purpose:</a>
+<a name="ln402">    Handles the entire client-side reception of a chunked large-data transfer.</a>
+<a name="ln403"> </a>
+<a name="ln404">    Importance of this helper:</a>
+<a name="ln405">    One of the key project requirements is transferring a large object (&gt;1 MB)</a>
+<a name="ln406">    from server to client. This function performs the client-side receive,</a>
+<a name="ln407">    reconstruction, verification, and reporting steps.</a>
+<a name="ln408"> </a>
+<a name="ln409">    Logic explanation:</a>
+<a name="ln410">    1. Read and parse transfer metadata from the start packet.</a>
+<a name="ln411">    2. Reserve buffer space for the full transfer.</a>
+<a name="ln412">    3. Receive each expected chunk and append it to the buffer.</a>
+<a name="ln413">    4. Receive the transfer-end marker packet.</a>
+<a name="ln414">    5. Compute checksum and compare to expected checksum.</a>
+<a name="ln415">    6. Write reconstructed bytes to a file.</a>
+<a name="ln416">    7. Build and send STATUS_RESPONSE summarizing success/failure.</a>
+<a name="ln417">    8. Return true only if send succeeded and integrity checks passed.</a>
+<a name="ln418"> </a>
+<a name="ln419">    DAL reasoning:</a>
+<a name="ln420">    This is one of the highest-significance client-side helpers in the file,</a>
+<a name="ln421">    conceptually closest to DAL A/B because it governs safe handling of a major</a>
+<a name="ln422">    required transfer feature and performs integrity verification.</a>
+<a name="ln423">    */</a>
+<a name="ln424">    bool receiveLargeTransfer(SOCKET clientSocket,</a>
+<a name="ln425">        agc::Logger&amp; logger,</a>
+<a name="ln426">        const std::string&amp; aircraftId,</a>
+<a name="ln427">        const agc::Packet&amp; startPacket,</a>
+<a name="ln428">        std::uint32_t&amp; sequenceNumber)</a>
+<a name="ln429">    {</a>
+<a name="ln430">        const std::string startText = agc::payloadToString(startPacket.payload);</a>
+<a name="ln431">        std::cout &lt;&lt; &quot;[CLIENT] Large transfer start: &quot; &lt;&lt; startText &lt;&lt; &quot;\n&quot;;</a>
+<a name="ln432"> </a>
+<a name="ln433">        std::size_t expectedSize = 0U;</a>
+<a name="ln434">        std::uint32_t expectedChunks = 0U;</a>
+<a name="ln435">        std::uint32_t expectedChecksum = 0U;</a>
+<a name="ln436"> </a>
+<a name="ln437">        {</a>
+<a name="ln438">            // Parse metadata from the LARGE_DATA_START payload.</a>
+<a name="ln439">            // This is a defensive gate: if metadata is malformed, transfer must stop.</a>
+<a name="ln440">            if (agc::client_logic::parseTransferMetadata(startText,</a>
+<a name="ln441">                expectedSize,</a>
+<a name="ln442">                expectedChunks,</a>
+<a name="ln443">                expectedChecksum) == false)</a>
+<a name="ln444">            {</a>
+<a name="ln445">                logger.logError(&quot;TRANSFER_META&quot;, &quot;Invalid transfer metadata.&quot;);</a>
+<a name="ln446">                return false;</a>
+<a name="ln447">            }</a>
+<a name="ln448">        }</a>
+<a name="ln449"> </a>
+<a name="ln450">        // Reserve expected size up front to reduce reallocations during chunk assembly.</a>
+<a name="ln451">        std::vector&lt;std::uint8_t&gt; fileBuffer{};</a>
+<a name="ln452">        fileBuffer.reserve(expectedSize);</a>
+<a name="ln453"> </a>
+<a name="ln454">        // Receive the expected number of chunks and append each chunk payload.</a>
+<a name="ln455">        for (std::uint32_t chunkCount = 0U; chunkCount &lt; expectedChunks; ++chunkCount)</a>
+<a name="ln456">        {</a>
+<a name="ln457">            agc::Packet chunkPacket{};</a>
+<a name="ln458"> </a>
+<a name="ln459">            if (receiveAndLog(clientSocket, logger, chunkPacket, &quot;Large transfer chunk received.&quot;) == false)</a>
+<a name="ln460">            {</a>
+<a name="ln461">                return false;</a>
+<a name="ln462">            }</a>
+<a name="ln463"> </a>
+<a name="ln464">            // Only chunk packets are valid during this phase.</a>
+<a name="ln465">            if (static_cast&lt;agc::MessageType&gt;(chunkPacket.header.messageType) != agc::MessageType::LARGE_DATA_CHUNK)</a>
+<a name="ln466">            {</a>
+<a name="ln467">                logger.logError(&quot;TRANSFER_TYPE&quot;, &quot;Expected LARGE_DATA_CHUNK.&quot;);</a>
+<a name="ln468">                return false;</a>
+<a name="ln469">            }</a>
+<a name="ln470"> </a>
+<a name="ln471">            // Append the chunk data to the reconstruction buffer.</a>
+<a name="ln472">            fileBuffer.insert(fileBuffer.end(), chunkPacket.payload.begin(), chunkPacket.payload.end());</a>
+<a name="ln473">        }</a>
+<a name="ln474"> </a>
+<a name="ln475">        // After all chunks, the client expects a transfer-end marker packet.</a>
+<a name="ln476">        agc::Packet endPacket{};</a>
+<a name="ln477">        if (receiveAndLog(clientSocket, logger, endPacket, &quot;Large transfer end received.&quot;) == false)</a>
+<a name="ln478">        {</a>
+<a name="ln479">            return false;</a>
+<a name="ln480">        }</a>
+<a name="ln481"> </a>
+<a name="ln482">        if (static_cast&lt;agc::MessageType&gt;(endPacket.header.messageType) != agc::MessageType::LARGE_DATA_END)</a>
+<a name="ln483">        {</a>
+<a name="ln484">            logger.logError(&quot;TRANSFER_END&quot;, &quot;Expected LARGE_DATA_END.&quot;);</a>
+<a name="ln485">            return false;</a>
+<a name="ln486">        }</a>
+<a name="ln487"> </a>
+<a name="ln488">        // Compute actual integrity results after reconstruction.</a>
+<a name="ln489">        const std::uint32_t actualChecksum = agc::computeChecksum(fileBuffer);</a>
+<a name="ln490">        const bool sizeOk = (fileBuffer.size() == expectedSize);</a>
+<a name="ln491">        const bool checksumOk = (actualChecksum == expectedChecksum);</a>
+<a name="ln492"> </a>
+<a name="ln493">        // Persist the received file locally as proof of transfer completion.</a>
+<a name="ln494">        std::ofstream outputFile(&quot;received_diagnostic_payload.bin&quot;, std::ios::binary);</a>
+<a name="ln495">        if (outputFile.is_open())</a>
+<a name="ln496">        {</a>
+<a name="ln497">            outputFile.write(reinterpret_cast&lt;const char*&gt;(fileBuffer.data()),</a>
+<a name="ln498">                static_cast&lt;std::streamsize&gt;(fileBuffer.size()));</a>
+<a name="ln499">            outputFile.close();</a>
+<a name="ln500">        }</a>
+<a name="ln501"> </a>
+<a name="ln502">        // Build structured transfer-completion status for the server.</a>
+<a name="ln503">        const std::string statusText =</a>
+<a name="ln504">            agc::client_logic::buildTransferStatusText((sizeOk &amp;&amp; checksumOk),</a>
+<a name="ln505">                fileBuffer.size(),</a>
+<a name="ln506">                actualChecksum);</a>
+<a name="ln507"> </a>
+<a name="ln508">        const agc::Packet statusPacket =</a>
+<a name="ln509">            agc::makePacket(agc::MessageType::STATUS_RESPONSE,</a>
+<a name="ln510">                sequenceNumber,</a>
+<a name="ln511">                aircraftId,</a>
+<a name="ln512">                agc::stringToPayload(statusText));</a>
+<a name="ln513"> </a>
+<a name="ln514">        const bool ok = sendAndLog(clientSocket, logger, statusPacket, &quot;Transfer completion response sent.&quot;);</a>
+<a name="ln515">        sequenceNumber++;</a>
+<a name="ln516"> </a>
+<a name="ln517">        std::cout &lt;&lt; &quot;[CLIENT] Large transfer complete. File saved as received_diagnostic_payload.bin\n&quot;;</a>
+<a name="ln518"> </a>
+<a name="ln519">        // The transfer is considered fully successful only if:</a>
+<a name="ln520">        // 1. the status packet was sent successfully,</a>
+<a name="ln521">        // 2. the received size matched expectation,</a>
+<a name="ln522">        // 3. the checksum matched expectation.</a>
+<a name="ln523">        return ok &amp;&amp; sizeOk &amp;&amp; checksumOk;</a>
+<a name="ln524">    }</a>
+<a name="ln525"> </a>
+<a name="ln526">    /*</a>
+<a name="ln527">    handleOptionalServerMessage</a>
+<a name="ln528"> </a>
+<a name="ln529">    Purpose:</a>
+<a name="ln530">    Checks whether the server has sent an optional message after the main ACK</a>
+<a name="ln531">    flow and dispatches it to the appropriate handler.</a>
+<a name="ln532"> </a>
+<a name="ln533">    Importance of this helper:</a>
+<a name="ln534">    After telemetry acknowledgement, the server may optionally send:</a>
+<a name="ln535">    - COMMAND</a>
+<a name="ln536">    - DATA_REQUEST</a>
+<a name="ln537">    - LARGE_DATA_START</a>
+<a name="ln538"> </a>
+<a name="ln539">    Instead of forcing these into the main telemetry send logic, this helper</a>
+<a name="ln540">    centralizes optional-message processing.</a>
+<a name="ln541"> </a>
+<a name="ln542">    Logic explanation:</a>
+<a name="ln543">    - Wait briefly for optional data</a>
+<a name="ln544">    - If nothing arrives, return true (not an error)</a>
+<a name="ln545">    - If a packet arrives, dispatch by message type</a>
+<a name="ln546">    - If it is a large transfer, update the largeTransferCompleted flag</a>
+<a name="ln547"> </a>
+<a name="ln548">    DAL reasoning:</a>
+<a name="ln549">    This helper is conceptually DAL B/C because it supports controlled handling</a>
+<a name="ln550">    of optional but important server-driven behavior.</a>
+<a name="ln551">    */</a>
+<a name="ln552">    bool handleOptionalServerMessage(SOCKET clientSocket,</a>
+<a name="ln553">        agc::Logger&amp; logger,</a>
+<a name="ln554">        const std::string&amp; aircraftId,</a>
+<a name="ln555">        std::uint32_t&amp; sequenceNumber,</a>
+<a name="ln556">        bool&amp; largeTransferCompleted)</a>
+<a name="ln557">    {</a>
+<a name="ln558">        // Optional messages are not always present, so a short wait timeout is used.</a>
+<a name="ln559">        if (agc::waitForReadable(clientSocket, agc::OPTIONAL_WAIT_MS) == false)</a>
+<a name="ln560">        {</a>
+<a name="ln561">            return true;</a>
+<a name="ln562">        }</a>
+<a name="ln563"> </a>
+<a name="ln564">        agc::Packet packet{};</a>
+<a name="ln565">        if (receiveAndLog(clientSocket, logger, packet, &quot;Optional server message received.&quot;) == false)</a>
+<a name="ln566">        {</a>
+<a name="ln567">            return false;</a>
+<a name="ln568">        }</a>
+<a name="ln569"> </a>
+<a name="ln570">        const agc::MessageType type =</a>
+<a name="ln571">            static_cast&lt;agc::MessageType&gt;(packet.header.messageType);</a>
+<a name="ln572"> </a>
+<a name="ln573">        if (type == agc::MessageType::COMMAND)</a>
+<a name="ln574">        {</a>
+<a name="ln575">            return handleCommand(clientSocket, logger, aircraftId, packet, sequenceNumber);</a>
+<a name="ln576">        }</a>
+<a name="ln577"> </a>
+<a name="ln578">        if (type == agc::MessageType::DATA_REQUEST)</a>
+<a name="ln579">        {</a>
+<a name="ln580">            return handleDataRequest(clientSocket, logger, aircraftId, packet, sequenceNumber);</a>
+<a name="ln581">        }</a>
+<a name="ln582"> </a>
+<a name="ln583">        if (type == agc::MessageType::LARGE_DATA_START)</a>
+<a name="ln584">        {</a>
+<a name="ln585">            const bool ok = receiveLargeTransfer(clientSocket,</a>
+<a name="ln586">                logger,</a>
+<a name="ln587">                aircraftId,</a>
+<a name="ln588">                packet,</a>
+<a name="ln589">                sequenceNumber);</a>
+<a name="ln590"> </a>
+<a name="ln591">            largeTransferCompleted = ok;</a>
+<a name="ln592">            return ok;</a>
+<a name="ln593">        }</a>
+<a name="ln594"> </a>
+<a name="ln595">        // Unknown optional messages are currently ignored rather than treated as fatal here.</a>
+<a name="ln596">        return true;</a>
+<a name="ln597">    }</a>
+<a name="ln598">}</a>
+<a name="ln599"> </a>
+<a name="ln600">int main()</a>
+<a name="ln601">{</a>
+<a name="ln602">    /*</a>
+<a name="ln603">    CLIENT APPLICATION ENTRY POINT</a>
+<a name="ln604">    */</a>
+<a name="ln605"> </a>
+<a name="ln606">    if (agc::initializeSockets() == false)</a>
+<a name="ln607">    {</a>
+<a name="ln608">        std::cerr &lt;&lt; &quot;[CLIENT] ERROR: WSAStartup failed.\n&quot;;</a>
+<a name="ln609">        return 1;</a>
+<a name="ln610">    }</a>
+<a name="ln611"> </a>
+<a name="ln612">    // File-based logging is a project requirement and important for traceability.</a>
+<a name="ln613">    agc::Logger logger(&quot;client_log.csv&quot;);</a>
+<a name="ln614"> </a>
+<a name="ln615">    SOCKET clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);</a>
+<a name="ln616">    if (clientSocket == INVALID_SOCKET)</a>
+<a name="ln617">    {</a>
+<a name="ln618">        std::cerr &lt;&lt; &quot;[CLIENT] ERROR: socket creation failed.\n&quot;;</a>
+<a name="ln619">        agc::cleanupSockets();</a>
+<a name="ln620">        return 1;</a>
+<a name="ln621">    }</a>
+<a name="ln622"> </a>
+<a name="ln623">    sockaddr_in serverAddress{};</a>
+<a name="ln624">    serverAddress.sin_family = AF_INET;</a>
+<a name="ln625">    serverAddress.sin_port = htons(agc::SERVER_PORT);</a>
+<a name="ln626"> </a>
+<a name="ln627">    // The project uses loopback communication for local testing.</a>
+<a name="ln628">    if (inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;serverAddress.sin_addr) != 1)</a>
+<a name="ln629">    {</a>
+<a name="ln630">        std::cerr &lt;&lt; &quot;[CLIENT] ERROR: invalid server address.\n&quot;;</a>
+<a name="ln631">        agc::closeSocket(clientSocket);</a>
+<a name="ln632">        agc::cleanupSockets();</a>
+<a name="ln633">        return 1;</a>
+<a name="ln634">    }</a>
+<a name="ln635"> </a>
+<a name="ln636">    // Apply send/receive timeout protection to avoid indefinite blocking.</a>
+<a name="ln637">    (void)agc::setSocketTimeouts(clientSocket, agc::SOCKET_TIMEOUT_MS);</a>
+<a name="ln638"> </a>
+<a name="ln639">    std::cout &lt;&lt; &quot;[CLIENT] Connecting to server...\n&quot;;</a>
+<a name="ln640">    if (connectWithRetries(clientSocket, serverAddress) == false)</a>
+<a name="ln641">    {</a>
+<a name="ln642">        std::cerr &lt;&lt; &quot;[CLIENT] ERROR: all connection attempts failed.\n&quot;;</a>
+<a name="ln643">        agc::closeSocket(clientSocket);</a>
+<a name="ln644">        agc::cleanupSockets();</a>
+<a name="ln645">        return 1;</a>
+<a name="ln646">    }</a>
+<a name="ln647"> </a>
+<a name="ln648">    const std::string aircraftId = &quot;ACFT001&quot;;</a>
+<a name="ln649">    std::uint32_t sequenceNumber = 1U;</a>
+<a name="ln650"> </a>
+<a name="ln651">    /*</a>
+<a name="ln652">    HANDSHAKE / CONNECTION VERIFICATION</a>
+<a name="ln653">    */</a>
+<a name="ln654">    agc::Packet responsePacket{};</a>
+<a name="ln655">    bool connectOk = false;</a>
+<a name="ln656"> </a>
+<a name="ln657">    for (std::uint32_t attempt = 1U; attempt &lt;= agc::MAX_RETRANSMISSION_ATTEMPTS; ++attempt)</a>
+<a name="ln658">    {</a>
+<a name="ln659">        // Build a connection request packet for this attempt.</a>
+<a name="ln660">        const agc::Packet connectPacket =</a>
+<a name="ln661">            agc::makePacket(agc::MessageType::CONNECT_REQUEST,</a>
+<a name="ln662">                sequenceNumber,</a>
+<a name="ln663">                aircraftId,</a>
+<a name="ln664">                agc::stringToPayload(&quot;Aircraft requesting connection.&quot;));</a>
+<a name="ln665"> </a>
+<a name="ln666">        if (sendAndLog(clientSocket, logger, connectPacket,</a>
+<a name="ln667">            &quot;Connect request sent. Attempt &quot; + std::to_string(attempt)) == false)</a>
+<a name="ln668">        {</a>
+<a name="ln669">            logger.logError(&quot;CONNECT_SEND&quot;,</a>
+<a name="ln670">                &quot;Connect request send failed on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln671">            continue;</a>
+<a name="ln672">        }</a>
+<a name="ln673"> </a>
+<a name="ln674">        // Wait for CONNECT_ACK from the server.</a>
+<a name="ln675">        if (receiveExpectedPacketWithRetransmission(clientSocket,</a>
+<a name="ln676">            logger,</a>
+<a name="ln677">            agc::MessageType::CONNECT_ACK,</a>
+<a name="ln678">            responsePacket,</a>
+<a name="ln679">            &quot;Handshake response&quot;) == true)</a>
+<a name="ln680">        {</a>
+<a name="ln681">            connectOk = true;</a>
+<a name="ln682">            sequenceNumber++;</a>
+<a name="ln683">            break;</a>
+<a name="ln684">        }</a>
+<a name="ln685"> </a>
+<a name="ln686">        logger.logError(&quot;CONNECT_ACK&quot;,</a>
+<a name="ln687">            &quot;Connect ACK not received on attempt &quot; + std::to_string(attempt));</a>
+<a name="ln688">    }</a>
+<a name="ln689"> </a>
+<a name="ln690">    if (connectOk == false)</a>
+<a name="ln691">    {</a>
+<a name="ln692">        std::cerr &lt;&lt; &quot;[CLIENT] ERROR: connection not acknowledged by server.\n&quot;;</a>
+<a name="ln693">        agc::closeSocket(clientSocket);</a>
+<a name="ln694">        agc::cleanupSockets();</a>
+<a name="ln695">        return 1;</a>
+<a name="ln696">    }</a>
+<a name="ln697"> </a>
+<a name="ln698">    std::cout &lt;&lt; &quot;[CLIENT] Connection verified by server.\n&quot;;</a>
+<a name="ln699"> </a>
+<a name="ln700">    bool largeTransferCompleted = false;</a>
+<a name="ln701"> </a>
+<a name="ln702">    /*TELEMETRY LOOP*/</a>
+<a name="ln703">    for (std::uint32_t index = 0U; index &lt; 5U; ++index)</a>
+<a name="ln704">    {</a>
+<a name="ln705">        const agc::TelemetryData telemetry = generateTelemetry(index);</a>
+<a name="ln706">        const std::vector&lt;std::uint8_t&gt; payload = agc::telemetryToPayload(telemetry);</a>
+<a name="ln707"> </a>
+<a name="ln708">        const agc::Packet telemetryPacket =</a>
+<a name="ln709">            agc::makePacket(agc::MessageType::TELEMETRY,</a>
+<a name="ln710">                sequenceNumber,</a>
+<a name="ln711">                aircraftId,</a>
+<a name="ln712">                payload);</a>
+<a name="ln713"> </a>
+<a name="ln714">        std::cout &lt;&lt; &quot;[CLIENT] Sending telemetry packet #&quot; &lt;&lt; sequenceNumber &lt;&lt; &quot;\n&quot;;</a>
+<a name="ln715"> </a>
+<a name="ln716">        // Send telemetry with acknowledgement-based retransmission.</a>
+<a name="ln717">        if (sendTelemetryWithRetransmission(clientSocket,</a>
+<a name="ln718">            logger,</a>
+<a name="ln719">            telemetryPacket,</a>
+<a name="ln720">            sequenceNumber) == false)</a>
+<a name="ln721">        {</a>
+<a name="ln722">            std::cerr &lt;&lt; &quot;[CLIENT] ERROR: telemetry retransmission attempts exhausted.\n&quot;;</a>
+<a name="ln723">            agc::closeSocket(clientSocket);</a>
+<a name="ln724">            agc::cleanupSockets();</a>
+<a name="ln725">            return 1;</a>
+<a name="ln726">        }</a>
+<a name="ln727"> </a>
+<a name="ln728">        // After each telemetry ACK, the server may optionally send another message.</a>
+<a name="ln729">        if (handleOptionalServerMessage(clientSocket,</a>
+<a name="ln730">            logger,</a>
+<a name="ln731">            aircraftId,</a>
+<a name="ln732">            sequenceNumber,</a>
+<a name="ln733">            largeTransferCompleted) == false)</a>
+<a name="ln734">        {</a>
+<a name="ln735">            std::cerr &lt;&lt; &quot;[CLIENT] ERROR: failed while handling optional server message.\n&quot;;</a>
+<a name="ln736">            agc::closeSocket(clientSocket);</a>
+<a name="ln737">            agc::cleanupSockets();</a>
+<a name="ln738">            return 1;</a>
+<a name="ln739">        }</a>
+<a name="ln740"> </a>
+<a name="ln741">        // Delay between telemetry samples to simulate periodic aircraft updates.</a>
+<a name="ln742">        std::this_thread::sleep_for(std::chrono::seconds(2));</a>
+<a name="ln743">    }</a>
+<a name="ln744"> </a>
+<a name="ln745">    /*    </a>
+<a name="ln746">    POST-TELEMETRY OPTIONAL WINDOW</a>
+<a name="ln747"> </a>
+<a name="ln748">    Purpose:</a>
+<a name="ln749">    After the main telemetry loop, the server may still begin the large transfer.</a>
+<a name="ln750">    This loop gives the client a short bounded period to handle that event.</a>
+<a name="ln751">    */</a>
+<a name="ln752">    for (std::uint32_t waitCycle = 0U; waitCycle &lt; 10U; ++waitCycle)</a>
+<a name="ln753">    {</a>
+<a name="ln754">        if (largeTransferCompleted == true)</a>
+<a name="ln755">        {</a>
+<a name="ln756">            break;</a>
+<a name="ln757">        }</a>
+<a name="ln758"> </a>
+<a name="ln759">        if (handleOptionalServerMessage(clientSocket,</a>
+<a name="ln760">            logger,</a>
+<a name="ln761">            aircraftId,</a>
+<a name="ln762">            sequenceNumber,</a>
+<a name="ln763">            largeTransferCompleted) == false)</a>
+<a name="ln764">        {</a>
+<a name="ln765">            std::cerr &lt;&lt; &quot;[CLIENT] ERROR: failed during post-telemetry handling.\n&quot;;</a>
+<a name="ln766">            agc::closeSocket(clientSocket);</a>
+<a name="ln767">            agc::cleanupSockets();</a>
+<a name="ln768">            return 1;</a>
+<a name="ln769">        }</a>
+<a name="ln770"> </a>
+<a name="ln771">        std::this_thread::sleep_for(std::chrono::milliseconds(250));</a>
+<a name="ln772">    }</a>
+<a name="ln773"> </a>
+<a name="ln774">    /*    CLEAN DISCONNECT    */</a>
+<a name="ln775">    {</a>
+<a name="ln776">        const agc::Packet disconnectPacket =</a>
+<a name="ln777">            agc::makePacket(agc::MessageType::DISCONNECT,</a>
+<a name="ln778">                sequenceNumber,</a>
+<a name="ln779">                aircraftId,</a>
+<a name="ln780">                agc::stringToPayload(&quot;Client disconnecting.&quot;));</a>
+<a name="ln781"> </a>
+<a name="ln782">        if (sendAndLog(clientSocket, logger, disconnectPacket, &quot;Disconnect sent.&quot;) == false)</a>
+<a name="ln783">        {</a>
+<a name="ln784">            std::cerr &lt;&lt; &quot;[CLIENT] ERROR: failed to send disconnect packet.\n&quot;;</a>
+<a name="ln785">            agc::closeSocket(clientSocket);</a>
+<a name="ln786">            agc::cleanupSockets();</a>
+<a name="ln787">            return 1;</a>
+<a name="ln788">        }</a>
+<a name="ln789"> </a>
+<a name="ln790">        // The disconnect acknowledgement is helpful, but the client treats it as optional</a>
+<a name="ln791">        // if the socket closes quickly after a valid end-of-session exchange.</a>
+<a name="ln792">        agc::Packet finalAck{};</a>
+<a name="ln793">        if (agc::waitForReadable(clientSocket, agc::SOCKET_TIMEOUT_MS) == true)</a>
+<a name="ln794">        {</a>
+<a name="ln795">            (void)receiveAndLog(clientSocket, logger, finalAck, &quot;Disconnect ACK received.&quot;);</a>
+<a name="ln796">        }</a>
+<a name="ln797">    }</a>
+<a name="ln798"> </a>
+<a name="ln799">    std::cout &lt;&lt; &quot;[CLIENT] Session completed successfully.\n&quot;;</a>
+<a name="ln800"> </a>
+<a name="ln801">    agc::closeSocket(clientSocket);</a>
+<a name="ln802">    agc::cleanupSockets();</a>
+<a name="ln803">    return 0;</a>
+<a name="ln804">}</a>
+</code></pre>
+<div class="balloon" rel="99"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="216"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="275"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="424"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="552"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="600"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2506/" target="_blank">V2506</a> A function should have a single point of exit at the end.</p></div>
+<div class="balloon" rel="472"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2547/" target="_blank">V2547</a> The return value of non-void function 'insert' should be used.</p></div>
+<div class="balloon" rel="497"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2547/" target="_blank">V2547</a> The return value of non-void function 'write' should be used.</p></div>
+<div class="balloon" rel="792"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2551/" target="_blank">V2551</a> The 'finalAck' variable should be declared in a scope that minimizes its visibility.</p></div>
+<div class="balloon" rel="628"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2578/" target="_blank">V2578</a> The string literal should not decay to a pointer to char. Consider inspecting the second function argument.</p></div>
+<div class="balloon" rel="74"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="99"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="140"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="173"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="216"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="275"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="334"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="375"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="424"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<div class="balloon" rel="552"><p><span style="font-size:18px">&uarr;</span> <a href="https://pvs-studio.com/en/docs/warnings/v2608/" target="_blank">V2608</a> The 'static' storage class specifier should be used in all declarations of functions that have internal linkage.</p></div>
+<link rel="stylesheet" href="highlight.css">
+<script src="highlight.pack.js"></script>
+<script src="highlightjs-line-numbers.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<script>hljs.initLineNumbersOnLoad();</script>
+<script>
+  $(document).ready(function() {
+      $('.balloon').each(function () {
+          var bl = $(this);
+          var line = bl.attr('rel');
+          var text = $('a[name="ln'+line+'"]').text();
+
+          var space_count = 0;
+          for(var i = 0; i<text.length; i++){
+              var char = text[i];
+              if((char !== ' ')&&(char !== '\t'))break;
+              if(char === '\t')space_count++;
+              space_count++;
+          }
+
+          bl.css('margin-left', space_count*8);
+          $('a[name="ln'+line+'"]').after(bl);
+      });
+
+      window.location = window.location;
+  });
+</script>
+</body>
+</html>
