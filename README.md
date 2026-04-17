@@ -51,9 +51,12 @@ AircraftGroundControl/
 │   ├── CommonTests/
 │   ├── IntegrationTests/
 │
+├── AircraftGroundControl   # Contains empty solution file in which the 4 MSTest projects are run
 ├── build/                  # Build output (generated)
+├── documentation/          # Contains test explorer results & PVS-Studio Scan Results for MISRA C++ Warnings
 ├── CMakeLists.txt          # Build configuration
 ├── Project Test Log.xlsx   # Test definitions and execution log
+├── Final Project Documentation.docx
 └── README.md
 ```
 
