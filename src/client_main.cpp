@@ -2,9 +2,7 @@
 Project  : Aircraft-Ground Control Communication System
 Course   : CSCN74000 - Software Safety & Reliability
 Group 4  : Shubham, Yinus, Brian
-File     : client_main.cpp
 
-Purpose:
 This file implements the aircraft-side client application. The client:
 - establishes a TCP connection to the server,
 - performs connection verification,
@@ -19,7 +17,7 @@ The client represents the in-flight aircraft endpoint in the distributed system.
 It is responsible for producing telemetry, responding to server requests, and
 participating in the required large-object transfer feature.
 
-Operational responsibilities in this file:
+Operational requirements in this file:
 - connection setup and retry handling,
 - handshake retransmission handling,
 - telemetry transmission with acknowledgement/retransmission,
@@ -28,7 +26,6 @@ Operational responsibilities in this file:
 - large transfer reception and validation,
 - orderly disconnect sequence.
 
-DAL-oriented commentary:
 - DAL A style relevance:
   Connection verification, metadata validation, retransmission handling, and
   large-transfer integrity checks act as defensive barriers against invalid or
@@ -59,13 +56,11 @@ namespace
     /*
     generateTelemetry
 
-    Purpose:
     Delegates telemetry generation to the client_logic module.
 
     Importance of this helper:
     client_main.cpp is responsible for communication flow, while the logic module
-    is responsible for generating the data values themselves. Keeping generation
-    logic separate improves modularity and testability.
+    is responsible for generating the data values themselves.
 
     DAL reasoning:
     Telemetry values directly affect what the server receives and processes, so
@@ -79,14 +74,13 @@ namespace
     /*
     connectWithRetries
 
-    Purpose:
     Attempts to connect to the server multiple times before failing.
 
     Importance of this helper:
     Transient startup timing issues are common in client/server systems. The
     server may not yet be ready at the exact moment the client starts.
 
-    Logic explanation:
+    Logic:
     - Try to connect up to MAX_RECONNECT_ATTEMPTS times.
     - Wait 1 second between attempts.
     - Return true immediately if any attempt succeeds.
@@ -120,14 +114,13 @@ namespace
     /*
     sendAndLog
 
-    Purpose:
     Sends a packet and records the result in the client log.
 
     Importance of this helper:
     The same send + log pattern appears many times in the client. Centralizing it
     reduces duplication and makes behavior consistent.
 
-    Logic explanation:
+    Logic:
     - Call agc::sendPacket()
     - If successful, log a TX packet entry
     - If not successful, log an error entry
@@ -159,7 +152,6 @@ namespace
     /*
     receiveAndLog
 
-    Purpose:
     Receives a packet and records the result in the client log.
 
     Importance of this helper:
@@ -192,7 +184,6 @@ namespace
     /*
     receiveExpectedPacketWithRetransmission
 
-    Purpose:
     Waits for a specific expected packet type with bounded retransmission-style
     retry behavior.
 
@@ -200,7 +191,7 @@ namespace
     Important protocol exchanges such as CONNECT_ACK and TELEMETRY_ACK should not
     fail immediately because of one missed read or timing issue.
 
-    Logic explanation:
+    Logic:
     For each attempt:
     1. Wait for the socket to become readable.
     2. Try to receive and log a packet.
@@ -254,14 +245,13 @@ namespace
     /*
     sendTelemetryWithRetransmission
 
-    Purpose:
     Sends a telemetry packet and waits for TELEMETRY_ACK with retry handling.
 
     Importance of this helper:
     Telemetry is the main repeating communication path in the client. It should
     not fail permanently because of one lost acknowledgement.
 
-    Logic explanation:
+    Logic:
     For each attempt:
     - send the telemetry packet,
     - wait for a TELEMETRY_ACK,
@@ -313,14 +303,13 @@ namespace
     /*
     handleCommand
 
-    Purpose:
     Processes a COMMAND packet received from the server and sends a COMMAND_ACK.
 
     Importance of this helper:
     The server may issue control instructions to the client during the active
     session. The client must acknowledge those instructions in a structured way.
 
-    Logic explanation:
+    Logic:
     - Read the command text from packet payload
     - Print it for operator visibility
     - Create a COMMAND_ACK packet indicating execution
@@ -354,14 +343,13 @@ namespace
     /*
     handleDataRequest
 
-    Purpose:
     Processes a DATA_REQUEST packet and returns a STATUS_RESPONSE packet.
 
     Importance of this helper:
     The server may request additional status information beyond the standard
     telemetry stream. This helper generates that structured response.
 
-    Logic explanation:
+    Logic:
     - Extract request text from payload
     - Print request information
     - Build a fixed diagnostic status string
@@ -398,7 +386,6 @@ namespace
     /*
     receiveLargeTransfer
 
-    Purpose:
     Handles the entire client-side reception of a chunked large-data transfer.
 
     Importance of this helper:
@@ -406,7 +393,7 @@ namespace
     from server to client. This function performs the client-side receive,
     reconstruction, verification, and reporting steps.
 
-    Logic explanation:
+    Logic:
     1. Read and parse transfer metadata from the start packet.
     2. Reserve buffer space for the full transfer.
     3. Receive each expected chunk and append it to the buffer.
@@ -526,7 +513,6 @@ namespace
     /*
     handleOptionalServerMessage
 
-    Purpose:
     Checks whether the server has sent an optional message after the main ACK
     flow and dispatches it to the appropriate handler.
 
@@ -537,9 +523,9 @@ namespace
     - LARGE_DATA_START
 
     Instead of forcing these into the main telemetry send logic, this helper
-    centralizes optional-message processing.
+    centralizes optional message processing.
 
-    Logic explanation:
+    Logic:
     - Wait briefly for optional data
     - If nothing arrives, return true (not an error)
     - If a packet arrives, dispatch by message type
@@ -745,7 +731,6 @@ int main()
     /*    
     POST-TELEMETRY OPTIONAL WINDOW
 
-    Purpose:
     After the main telemetry loop, the server may still begin the large transfer.
     This loop gives the client a short bounded period to handle that event.
     */

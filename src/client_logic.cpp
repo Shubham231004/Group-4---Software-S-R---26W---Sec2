@@ -6,14 +6,12 @@
 Project  : Aircraft-Ground Control Communication System
 Course   : CSCN74000 - Software Safety & Reliability
 Group 4  : Shubham, Yinus, Brian
-File     : client_logic.cpp
 
-Purpose:
 This file implements helper logic used specifically by the aircraft client.
 These functions support the client’s higher-level data preparation and validation
 without directly performing low-level socket communication.
 
-Main responsibilities implemented here:
+Main requirements implemented here:
 - generating simulated telemetry values,
 - extracting and parsing metadata for large transfer,
 - building transfer completion status text,
@@ -28,7 +26,6 @@ is wrong, the client may:
 - report wrong transfer status,
 - accept unrealistic telemetry values without validation.
 
-DAL-oriented commentary:
 - DAL A style relevance:
   Rejecting malformed transfer metadata prevents unsafe or uncontrolled file
   reconstruction behavior.
@@ -49,7 +46,6 @@ namespace agc::client_logic
         /*
         extractField
 
-        Purpose:
         Extracts the value associated with a given key from a semicolon-separated
         metadata string.
 
@@ -68,7 +64,7 @@ namespace agc::client_logic
         This helper supports metadata parsing, so it has indirect DAL A/B-style
         relevance because bad metadata must not be trusted.
 
-        Logic explanation:
+        Logic:
         1. Find the position of the requested key.
         2. Determine where the value starts (immediately after the key).
         3. Find the end of the value (next ';' or end of string).
@@ -113,7 +109,6 @@ namespace agc::client_logic
     /*
     generateTelemetry
 
-    Purpose:
     Generates a deterministic telemetry sample for the aircraft client.
 
     Importance of this function:
@@ -124,13 +119,11 @@ namespace agc::client_logic
     This is conceptually closest to DAL B/C because telemetry values directly
     affect what the server monitors and acknowledges.
 
-    Logic explanation:
+    Logic:
     - altitude increases by 100 per sample
     - speed increases by 2 per sample
     - heading increases by 1 per sample
     - fuel decreases by 1 per sample
-
-    This creates a simple but realistic progression across a short session.
     */
     TelemetryData generateTelemetry(std::uint32_t sampleIndex)
     {
@@ -154,7 +147,6 @@ namespace agc::client_logic
     /*
     parseTransferMetadata
 
-    Purpose:
     Parses the metadata string received from the server before large chunked
     transfer begins.
 
@@ -168,7 +160,7 @@ namespace agc::client_logic
     This is conceptually closest to DAL A/B because malformed metadata must be
     rejected rather than trusted blindly.
 
-    Logic explanation:
+    Logic:
     1. Extract "size=", "chunks=", and "checksum=" fields.
     2. Convert the extracted text values into numeric types.
     3. If conversion fails, reject the metadata.
@@ -224,7 +216,6 @@ namespace agc::client_logic
     /*
     buildTransferStatusText
 
-    Purpose:
     Builds the structured completion status string sent back to the server after
     large transfer reconstruction and verification.
 
@@ -238,7 +229,7 @@ namespace agc::client_logic
     This is closest to DAL C because it supports post-transfer validation and
     diagnostics rather than primary session control.
 
-    Logic explanation:
+    Logic:
     The function creates a structured key/value text string that can be placed
     inside a STATUS_RESPONSE packet.
     */
@@ -255,7 +246,6 @@ namespace agc::client_logic
     /*
     isTelemetryWithinExpectedOperationalRange
 
-    Purpose:
     Checks whether a telemetry sample lies within the expected operating range
     defined for this project simulation.
 
@@ -270,7 +260,7 @@ namespace agc::client_logic
     This is conceptually closest to DAL B/C because unrealistic telemetry should
     not silently pass as acceptable operational information.
 
-    Logic explanation:
+    Logic:
     The function returns true only if all individual fields satisfy their
     allowed range:
     - altitude: 0 to 50000

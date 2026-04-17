@@ -2,9 +2,8 @@
 Project  : Aircraft-Ground Control Communication System
 Course   : CSCN74000 - Software Safety & Reliability
 Group 4  : Shubham, Yinus, Brian
-File     : common.cpp
 
-Purpose:
+
 This file implements all shared protocol functionality used by both the
 aircraft client and the ground control server. It includes:
 - Packet serialization/deserialization
@@ -21,7 +20,7 @@ This file forms the communication backbone of the system. Any mistake in
 packet structure, serialization, or validation can break communication or
 introduce unsafe behavior.
 
-DAL-oriented commentary (for documentation clarity):
+
 - DAL A (highest criticality influence):
   Payload size validation, timestamp validation, and safe packet parsing.
 - DAL B:
@@ -50,7 +49,7 @@ namespace agc
         Standard functions (htonl) only support 32-bit values. Since timestamps
         are 64-bit, we split into two halves and convert separately.
         */
-        std::uint64_t hostToNetwork64(std::uint64_t value)
+        std::uint64_t static hostToNetwork64(std::uint64_t value)
         {
             const std::uint32_t highPart =
                 htonl(static_cast<std::uint32_t>((value >> 32U) & 0xFFFFFFFFULL));
@@ -82,7 +81,7 @@ namespace agc
         This function is critical because incorrect serialization can corrupt
         communication between client and server.
         */
-        bool serializeHeader(const PacketHeader& header, std::vector<std::uint8_t>& output)
+        static bool serializeHeader(const PacketHeader& header, std::vector<std::uint8_t>& output)
         {
             PacketHeader networkHeader = header;
 
@@ -96,7 +95,7 @@ namespace agc
             networkHeader.payloadSize = htonl(networkHeader.payloadSize);
 
             output.resize(sizeof(PacketHeader));
-            std::memcpy(output.data(), &networkHeader, sizeof(PacketHeader));
+            (void)memcpy(output.data(), &networkHeader, sizeof(PacketHeader));
 
             return true;
         }
@@ -107,7 +106,7 @@ namespace agc
         DAL B:
         Must correctly reconstruct packet metadata before payload is processed.
         */
-        bool deserializeHeader(const std::vector<std::uint8_t>& input, PacketHeader& header)
+        static bool deserializeHeader(const std::vector<std::uint8_t>& input, PacketHeader& header)
         {
             if (input.size() != sizeof(PacketHeader))
             {
@@ -115,7 +114,7 @@ namespace agc
             }
 
             PacketHeader tempHeader{};
-            std::memcpy(&tempHeader, input.data(), sizeof(PacketHeader));
+            (void)memcpy(&tempHeader, input.data(), sizeof(PacketHeader));
 
             // Convert from network byte order to host byte order
             tempHeader.magic = ntohl(tempHeader.magic);
@@ -212,7 +211,8 @@ namespace agc
 
     void cleanupSockets()
     {
-        WSACleanup();
+        int cleanupResult = WSACleanup();
+        (void)cleanupResult;
     }
 
     void closeSocket(SOCKET socketHandle)
@@ -477,20 +477,76 @@ directly affects core communication behavior between the two applications.
     {
         switch (type)
         {
-        case MessageType::CONNECT_REQUEST: return "CONNECT_REQUEST";
-        case MessageType::CONNECT_ACK: return "CONNECT_ACK";
-        case MessageType::TELEMETRY: return "TELEMETRY";
-        case MessageType::TELEMETRY_ACK: return "TELEMETRY_ACK";
-        case MessageType::ERROR_MESSAGE: return "ERROR_MESSAGE";
-        case MessageType::DISCONNECT: return "DISCONNECT";
-        case MessageType::COMMAND: return "COMMAND";
-        case MessageType::COMMAND_ACK: return "COMMAND_ACK";
-        case MessageType::DATA_REQUEST: return "DATA_REQUEST";
-        case MessageType::STATUS_RESPONSE: return "STATUS_RESPONSE";
-        case MessageType::LARGE_DATA_START: return "LARGE_DATA_START";
-        case MessageType::LARGE_DATA_CHUNK: return "LARGE_DATA_CHUNK";
-        case MessageType::LARGE_DATA_END: return "LARGE_DATA_END";
-        default: return "UNKNOWN";
+        case MessageType::CONNECT_REQUEST:
+        {
+            return "CONNECT_REQUEST";
+            break;
+        }
+        case MessageType::CONNECT_ACK:
+        {
+            return "CONNECT_ACK";
+            break;
+        }
+        case MessageType::TELEMETRY:
+        {
+            return "TELEMETRY";
+            break;
+        }
+        case MessageType::TELEMETRY_ACK:
+        {
+            return "TELEMETRY_ACK";
+            break;
+        }
+        case MessageType::ERROR_MESSAGE:
+        {
+            return "ERROR_MESSAGE";
+            break;
+        }
+        case MessageType::DISCONNECT:
+        {
+            return "DISCONNECT";
+            break;
+        }
+        case MessageType::COMMAND:
+        {
+            return "COMMAND";
+            break;
+        }
+        case MessageType::COMMAND_ACK:
+        {
+            return "COMMAND_ACK";
+            break;
+        }
+        case MessageType::DATA_REQUEST:
+        {
+            return "DATA_REQUEST";
+            break;
+        }
+        case MessageType::STATUS_RESPONSE:
+        {
+            return "STATUS_RESPONSE";
+            break;
+        }
+        case MessageType::LARGE_DATA_START:
+        {
+            return "LARGE_DATA_START";
+            break;
+        }
+        case MessageType::LARGE_DATA_CHUNK:
+        {
+            return "LARGE_DATA_CHUNK";
+            break;
+        }
+        case MessageType::LARGE_DATA_END:
+        {
+            return "LARGE_DATA_END";
+            break;
+        }
+        default:
+        {
+            return "UNKNOWN";
+            break;
+        }
         }
     }
 

@@ -4,14 +4,12 @@
 Project  : Aircraft-Ground Control Communication System
 Course   : CSCN74000 - Software Safety & Reliability
 Group 4  : Shubham, Yinus, Brian
-File     : server_logic.cpp
 
-Purpose:
 This file implements helper logic used specifically by the ground control server.
 These functions support the server's higher-level operational decisions without
 directly performing low-level socket communication.
 
-Main responsibilities implemented here:
+Main requirements implemented here:
 - validating whether an incoming packet is safe to process in ACTIVE state,
 - calculating the number of chunks needed for large-data transfer,
 - building the metadata string for the start of large transfer,
@@ -27,10 +25,7 @@ functions here are small, they influence the correctness of:
 - status-request timing,
 - and large-transfer execution.
 
-If this logic is wrong, the main server application may still compile and run,
-but it may behave incorrectly or at the wrong phase of operation.
 
-DAL-oriented commentary:
 - DAL A style relevance:
   Active-packet validation is the most safety-relevant item in this file because
   it determines whether the server should trust incoming packets in the active
@@ -50,7 +45,6 @@ namespace agc::server_logic
     /*
     validateActivePacket
 
-    Purpose:
     Performs combined validation on a packet that has been received while the
     server is already inside the ACTIVE operational phase.
 
@@ -66,7 +60,7 @@ namespace agc::server_logic
     This function is conceptually closest to DAL A/B because it acts as a
     defensive acceptance gate before active-session data is processed.
 
-    Logic explanation:
+    Logic:
     The function computes three separate validation results and only returns
     true if all three are true.
     */
@@ -90,7 +84,6 @@ namespace agc::server_logic
     /*
     computeTotalChunks
 
-    Purpose:
     Computes how many chunks are required to transfer a large payload when the
     server must split it into bounded pieces.
 
@@ -103,7 +96,7 @@ namespace agc::server_logic
     This is conceptually closest to DAL C because it directly affects the
     reliability and correctness of the large-transfer feature.
 
-    Logic explanation:
+    Logic:
     - If chunkSize is zero, return zero immediately to avoid division by zero.
     - Otherwise, use a round-up division formula:
         (totalSize + chunkSize - 1) / chunkSize
@@ -126,7 +119,6 @@ namespace agc::server_logic
     /*
     buildTransferStartText
 
-    Purpose:
     Builds the structured metadata string that is sent in the LARGE_DATA_START
     packet before chunk transmission begins.
 
@@ -142,7 +134,7 @@ namespace agc::server_logic
     This is closest to DAL B/C because it supports a major system feature and
     must remain internally consistent for transfer reconstruction to succeed.
 
-    Logic explanation:
+    Logic:
     The function concatenates all metadata fields into one predictable string
     with semicolon-separated key/value entries.
     */
@@ -160,7 +152,6 @@ namespace agc::server_logic
     /*
     shouldSendCommand
 
-    Purpose:
     Decides whether the server should send a command packet at the current point
     in the telemetry sequence.
 
@@ -172,7 +163,7 @@ namespace agc::server_logic
     This is closest to DAL B because incorrect command timing may affect major
     distributed behavior and sequencing.
 
-    Logic explanation:
+    Logic:
     The current design sends the command only when the telemetry count reaches 2.
     */
     bool shouldSendCommand(std::uint32_t telemetryCount)
@@ -183,7 +174,6 @@ namespace agc::server_logic
     /*
     shouldRequestAdditionalStatus
 
-    Purpose:
     Decides whether the server should send a DATA_REQUEST packet asking the
     aircraft client for additional status details.
 
@@ -196,7 +186,7 @@ namespace agc::server_logic
     This is closest to DAL B/C because it influences structured message flow
     between server and client.
 
-    Logic explanation:
+    Logic:
     The current design requests additional status only when telemetry count
     reaches 3.
     */
@@ -208,7 +198,6 @@ namespace agc::server_logic
     /*
     shouldStartLargeTransfer
 
-    Purpose:
     Decides whether the server should start the large data transfer phase.
 
     Importance of this function:
@@ -221,7 +210,7 @@ namespace agc::server_logic
     This is conceptually closest to DAL B because it controls a major operational
     feature that changes server behavior and communication flow significantly.
 
-    Logic explanation:
+    Logic:
     The current design starts large transfer only if:
     - telemetry count has reached 5, and
     - transferTriggered is still false.

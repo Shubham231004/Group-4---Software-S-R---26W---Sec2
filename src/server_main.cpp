@@ -2,9 +2,7 @@
 Project  : Aircraft-Ground Control Communication System
 Course   : CSCN74000 - Software Safety & Reliability
 Group 4  : Shubham, Yinus, Brian
-File     : server_main.cpp
 
-Purpose:
 This file implements the ground control server application. The server:
 - starts a listening TCP socket,
 - accepts a client connection,
@@ -22,7 +20,7 @@ The server is the controlling side of the distributed system. It is responsible
 for deciding when major actions occur and for ensuring communication happens only
 in valid states.
 
-Main responsibilities in this file:
+Main requirements implemented in this file:
 - state-machine control,
 - connection acceptance and verification,
 - packet validation during active session,
@@ -31,7 +29,6 @@ Main responsibilities in this file:
 - large transfer initiation and completion,
 - error handling and shutdown.
 
-DAL-oriented commentary:
 - DAL A style relevance:
   Verification-stage checks, state-transition protection, payload/timestamp/ID
   validation, and defensive retransmission handling act as the strongest safety
@@ -56,11 +53,6 @@ DAL-oriented commentary:
 
 namespace
 {
-    /*
-    Forward declarations are placed here because several helpers call each other.
-    This keeps the implementation organized while still allowing a top-down read
-    of the file.
-    */
     bool sendPacketWithRetransmission(SOCKET clientSocket,
         agc::Logger& logger,
         const agc::Packet& packet,
@@ -79,7 +71,6 @@ namespace
     /*
     printState
 
-    Purpose:
     Prints the current server state to the console for operator visibility.
 
     Importance of this helper:
@@ -130,7 +121,6 @@ namespace
     /*
     isValidTransition
 
-    Purpose:
     Defines which state transitions are allowed in the server state machine.
 
     Importance of this helper:
@@ -142,7 +132,7 @@ namespace
     conceptually closest to DAL A/B because it prevents uncontrolled or unsafe
     operational mode changes.
 
-    Logic explanation:
+    Logic:
     For each current state, only the explicitly listed next states are allowed.
     Any other requested transition is rejected.
     */
@@ -211,7 +201,6 @@ namespace
     /*
     stateToString
 
-    Purpose:
     Converts ServerState to a readable string for logs and error reporting.
 
     Importance of this helper:
@@ -251,7 +240,6 @@ namespace
     /*
     transitionState
 
-    Purpose:
     Performs a checked server-state transition and logs the result.
 
     Importance of this helper:
@@ -260,9 +248,9 @@ namespace
 
     DAL reasoning:
     This is one of the most important DAL A/B-style controls in the server
-    implementation because it centrally enforces legal state-machine behavior.
+    implementation because it centrally enforces valid state-machine behavior.
 
-    Logic explanation:
+    Logic:
     1. Check whether the requested transition is legal.
     2. If illegal, log an error and reject it.
     3. If legal, log the transition, update the state, and print it.
@@ -302,7 +290,6 @@ namespace
     /*
     sendAndLog
 
-    Purpose:
     Sends a packet to the client and records the result in the server log.
 
     Importance of this helper:
@@ -335,7 +322,6 @@ namespace
     /*
     receiveAndLog
 
-    Purpose:
     Receives a packet from the client and records the result in the server log.
 
     Importance of this helper:
@@ -367,7 +353,6 @@ namespace
     /*
     validateActivePacket
 
-    Purpose:
     Delegates active-session validation to the server_logic module.
 
    Importance of this helper:
@@ -386,7 +371,6 @@ namespace
     /*
     waitForCommandAck
 
-    Purpose:
     Waits for a COMMAND_ACK packet after the server has issued a command.
 
     Importance of this helper:
@@ -412,13 +396,12 @@ namespace
     /*
     sendPacketWithRetransmission
 
-    Purpose:
     Sends a packet with bounded retransmission attempts.
 
     Importance of this helper:
     Some server-originated packets are important enough to retry if send fails.
 
-    Logic explanation:
+    Logic:
     - attempt send up to MAX_RETRANSMISSION_ATTEMPTS times
     - log success or per-attempt failure
     - stop immediately once one attempt succeeds
@@ -449,14 +432,13 @@ namespace
     /*
     receiveExpectedMessageWithRetransmission
 
-    Purpose:
     Waits for a specific expected message type with bounded retry behavior.
 
     Importance of this helper:
     The server should not immediately fail a critical exchange because of one
     timeout, one wrong packet, or one temporary receive issue.
 
-    Logic explanation:
+    Logic:
     For each attempt:
     1. Wait for the socket to become readable.
     2. Try to receive and log a packet.
@@ -507,14 +489,13 @@ namespace
     /*
     sendCommandAndAwaitAck
 
-    Purpose:
     Sends a command to the client and waits for command acknowledgement.
 
     Importance of this helper:
     The server issues a command as part of the active communication sequence and
     must confirm that the client acknowledges it before continuing.
 
-    Logic explanation:
+    Logic:
     1. Ensure the server is currently in ACTIVE.
     2. Move into COMMAND_PROCESSING.
     3. Build the COMMAND packet.
@@ -588,14 +569,13 @@ namespace
     /*
     requestAdditionalStatus
 
-    Purpose:
     Sends a DATA_REQUEST packet and waits for a STATUS_RESPONSE.
 
     Importance of this helper:
     The project includes a server-triggered status query after a certain point in
     the telemetry sequence.
 
-    Logic explanation:
+    Logic:
     1. Ensure the server is currently in ACTIVE.
     2. Move into COMMAND_PROCESSING.
     3. Send a DATA_REQUEST packet.
@@ -687,14 +667,13 @@ namespace
     /*
     performLargeTransfer
 
-    Purpose:
     Executes the entire server-side large-data transfer sequence.
 
     Importance of this helper:
     The project requires the server to initiate a large (>1 MB) object transfer
     to the client. This helper performs that feature in a controlled sequence.
 
-    Logic explanation:
+    Logic:
     1. Ensure the server is in ACTIVE.
     2. Send a command instructing the client to prepare for diagnostic transfer.
     3. Transition into DATA_TRANSFER state.
